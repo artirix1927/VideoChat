@@ -1,14 +1,21 @@
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-engine = create_engine(r"sqlite:///D:\\VideoChat\\auth_service\\db.sqlite3")
+# Use async driver for SQLite (aiosqlite)
+DATABASE_URL = "sqlite+aiosqlite:///D:\\VideoChat\\auth_service\\db.sqlite3"
 
-SessionLocal = sessionmaker(bind=engine)
+# Create async engine
+engine = create_async_engine(DATABASE_URL, echo=True)
+
+# Create async session factory
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Async dependency for FastAPI
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session

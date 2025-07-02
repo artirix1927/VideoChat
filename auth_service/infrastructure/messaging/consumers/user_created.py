@@ -1,0 +1,32 @@
+# import json
+
+
+# class UserCreatedConsumer:
+#     def __init__(self, channel):
+#         self.channel = channel
+
+#     def start(self):
+#         def callback(ch, method, properties, body):
+#             data = json.loads(body)
+#             # call application service here
+
+#         self.channel.basic_consume(queue="user.created", on_message_callback=callback)
+#         self.channel.start_consuming()
+# consumer.py
+import asyncio
+import aio_pika
+
+
+async def main():
+    connection = await aio_pika.connect_robust("amqp://guest:guest@localhost/")
+    channel = await connection.channel()
+
+    queue = await channel.declare_queue("user.created", durable=True)
+
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            async with message.process():
+                print("Received:", message.body.decode())
+
+
+asyncio.run(main())

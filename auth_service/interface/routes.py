@@ -1,4 +1,5 @@
-from fastapi import Depends
+from fastapi import APIRouter, Depends, Request
+
 
 from domain.repositories.refresh_token import RefreshTokenRepository
 from infrastructure.repositories.sqlalchemy_refresh_token import (
@@ -21,27 +22,30 @@ from application.use_cases.login import LoginUseCase
 from application.use_cases.register import RegisterUseCase
 
 
-from app import app
+router = APIRouter()
 
 
-@app.post("/user/create")
-def create_user(username: str, password: str, session: Session = Depends(get_db)):
+@router.post("/user/create")
+async def create_user(
+    request: Request, username: str, password: str, session: Session = Depends(get_db)
+):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     password_hasher: PasswordHasher = BcryptPasswordHasher()
 
     register_use_case = RegisterUseCase(
-        user_repository=user_repository, password_hasher=password_hasher
+        user_repository=user_repository,
+        password_hasher=password_hasher,
     )
 
     try:
-        result = register_use_case.execute(username, password)
+        result = await register_use_case.execute(request, username, password)
         return result
     except Exception as e:
         raise e
 
 
-@app.post("/user/login")
-def login_user(username: str, password: str, session: Session = Depends(get_db)):
+@router.post("/user/login")
+async def login_user(username: str, password: str, session: Session = Depends(get_db)):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     refresh_token_repository: RefreshTokenRepository = SQLAlchemyRefreshTokenRepository(
         session
@@ -57,7 +61,7 @@ def login_user(username: str, password: str, session: Session = Depends(get_db))
     )
 
     try:
-        result = login_use_case.execute(username, password)
+        result = await login_use_case.execute(username, password)
         return result
     except Exception as e:
         raise e

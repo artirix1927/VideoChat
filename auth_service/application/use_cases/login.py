@@ -18,8 +18,8 @@ class LoginUseCase:
         self.password_hasher = password_hasher
         self.refresh_token_repository = refresh_token_repository
 
-    def execute(self, username: str, password: str):
-        user = self.user_repository.get_by_username(username)
+    async def execute(self, username: str, password: str):
+        user = await self.user_repository.get_by_username(username)
 
         is_password_verified = self.password_hasher.verify_password(
             password, user.hashed_password
@@ -35,7 +35,7 @@ class LoginUseCase:
             self.token_generator.extract_from_payload(refresh_token)
         )
 
-        self.refresh_token_repository.create_or_update_refresh_token(
+        await self.refresh_token_repository.create_or_update_refresh_token(
             refresh_token, refresh_token_user_id, refresh_token_exp
         )
         return {"access_token": access_token, "refresh_token": refresh_token}
