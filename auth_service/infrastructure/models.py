@@ -16,7 +16,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str] = mapped_column()
-
+    email: Mapped[str] = mapped_column()
     refresh_token: Mapped["RefreshToken"] = relationship(
         back_populates="user", uselist=False
     )

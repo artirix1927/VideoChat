@@ -8,6 +8,7 @@ def user_from_model(user_model: UserModel) -> User:
         id=user_model.id,
         username=user_model.username,
         hashed_password=user_model.hashed_password,
+        email=user_model.email,
     )
 
 
