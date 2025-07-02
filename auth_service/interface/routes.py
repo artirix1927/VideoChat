@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, Request
 
 
+from infrastructure.messaging.publishers.user_events import (
+    UserEventPublisher,
+)
 from domain.repositories.refresh_token import RefreshTokenRepository
 from infrastructure.repositories.sqlalchemy_refresh_token import (
     SQLAlchemyRefreshTokenRepository,
@@ -31,8 +34,10 @@ async def create_user(
 ):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     password_hasher: PasswordHasher = BcryptPasswordHasher()
+    publisher: UserEventPublisher = request.app.state.publisher  # ✅ move this here
 
     register_use_case = RegisterUseCase(
+        publisher=publisher,
         user_repository=user_repository,
         password_hasher=password_hasher,
     )
