@@ -40,5 +40,14 @@ class SQLAlchemyUserRepository(UserRepository):
             self.session.add(user_orm)
             await self.session.commit()
             return user
-        else:
-            return await self.create_user(user.username, user.hashed_password)
+
+        return await self.create_user(user.username, user.hashed_password)
+
+    async def delete(self, user: User):
+        await self.delete_by_id(id=user.id)
+
+    async def delete_by_id(self, id: User):
+        user_orm = await self.session.get(UserModel, id)
+        if user_orm:
+            self.session.delete(user_orm)
+            await self.session.commit()

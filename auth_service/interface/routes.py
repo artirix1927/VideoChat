@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 
 
+from application.use_cases.delete import DeleteUseCase
 from infrastructure.messaging.publishers.user_events import (
     UserEventPublisher,
 )
@@ -67,6 +68,17 @@ async def login_user(username: str, password: str, session: Session = Depends(ge
 
     try:
         result = await login_use_case.execute(username, password)
+        return result
+    except Exception as e:
+        raise e
+
+
+@router.post("/user/delete")
+async def delete_user(user_id: int, session: Session = Depends(get_db)):
+    user_repository: UserRepository = SQLAlchemyUserRepository(session)
+    delete_use_case = DeleteUseCase(user_repository=user_repository, id=user_id)
+    try:
+        result = await delete_use_case.execute(user_id=user_id)
         return result
     except Exception as e:
         raise e

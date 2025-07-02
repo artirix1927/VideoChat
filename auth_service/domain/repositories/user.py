@@ -18,3 +18,11 @@ class UserRepository(ABC):
     @abstractmethod
     async def create_user(self, username: str, password: str) -> User:
         pass
+
+    @abstractmethod
+    async def delete_by_id(id: int):
+        pass
+
+    @abstractmethod
+    async def delete(user: User):
+        pass
