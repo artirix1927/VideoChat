@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from domain.models import TwoFactorCode
 from domain.repositories.two_factor_auth import TwoFactorCodeRepository
-from sqlalchemy.future import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.models import TwoFactorCode as TwoFactorCodeModel
 
@@ -13,6 +13,10 @@ class SQLAlchemyTwoFactorCodeRepository(TwoFactorCodeRepository):
     async def save(
         self, user_id: int, code: str, expires_at: datetime
     ) -> TwoFactorCode:
+        await self.session.execute(
+            delete(TwoFactorCodeModel).where(TwoFactorCodeModel.user_id == user_id)
+        )
+
         new_code = TwoFactorCodeModel(user_id=user_id, code=code, expires_at=expires_at)
         self.session.add(new_code)
         await self.session.commit()

@@ -36,6 +36,6 @@ class RefreshToken(Base):
 class TwoFactorCode(Base):
     __tablename__ = "2fa_code"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), unique=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), unique=True)
     code: Mapped[int] = mapped_column()
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
