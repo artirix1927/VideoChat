@@ -15,12 +15,14 @@ class RegisterUseCase:
         self.password_hasher = password_hasher
         self.publisher = publisher
 
-    async def execute(self, username: str, password: str):
+    async def execute(self, username: str, password: str, email: str):
 
         hashed_password = self.password_hasher.hash_password(password)
 
         user = await self.user_repository.create_user(
-            username=username, hashed_password=hashed_password
+            username=username,
+            hashed_password=hashed_password,
+            email=email,
         )
 
         await self.publisher.publish_user_created(user)

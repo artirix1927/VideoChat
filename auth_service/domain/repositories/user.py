@@ -16,7 +16,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def create_user(self, username: str, password: str) -> User:
+    async def create_user(self, username: str, password: str, email: str) -> User:
         pass
 
     @abstractmethod

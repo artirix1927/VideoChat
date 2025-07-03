@@ -1,5 +1,5 @@
 import json
-from domain.models import User
+from domain.models import TwoFactorCode, User
 import aio_pika
 from dataclasses import asdict
 
@@ -13,4 +13,13 @@ class UserEventPublisher:
         await channel.default_exchange.publish(
             aio_pika.Message(body=json.dumps(asdict(user)).encode()),
             routing_key="user.created",
+        )
+
+    async def publish_two_factor_code_generated(self, event: TwoFactorCode):
+        channel = await self.connection.channel()
+        exchange = await channel.declare_exchange(
+            "user.events", aio_pika.ExchangeType.FANOUT
+        )
+        await exchange.publish(
+            aio_pika.Message(body=json.dumps(asdict(event)).encode()), routing_key=""
         )

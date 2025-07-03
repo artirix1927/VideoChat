@@ -20,12 +20,16 @@ class SQLAlchemyUserRepository(UserRepository):
         user_model = result.scalars().first()
         return user_from_model(user_model) if user_model else None
 
-    async def create_user(self, username: str, hashed_password: str) -> User:
+    async def create_user(
+        self, username: str, hashed_password: str, email: str
+    ) -> User:
         user_entity = User.create_user(
-            username=username, hashed_password=hashed_password
+            username=username, hashed_password=hashed_password, email=email
         )
         model = UserModel(
-            username=user_entity.username, hashed_password=user_entity.hashed_password
+            username=user_entity.username,
+            hashed_password=user_entity.hashed_password,
+            email=email,
         )
         self.session.add(model)
         await self.session.commit()
