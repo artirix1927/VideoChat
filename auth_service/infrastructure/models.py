@@ -16,7 +16,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str] = mapped_column()
-    email: Mapped[str] = mapped_column()
+    email: Mapped[str] = mapped_column(nullable=True)
     refresh_token: Mapped["RefreshToken"] = relationship(
         back_populates="user", uselist=False
     )
@@ -31,3 +31,11 @@ class RefreshToken(Base):
     revoked: Mapped[bool] = mapped_column(default=False)
 
     user: Mapped["User"] = relationship(back_populates="refresh_token")
+
+
+class TwoFactorCode(Base):
+    __tablename__ = "2fa_code"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), unique=False)
+    code: Mapped[int] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
