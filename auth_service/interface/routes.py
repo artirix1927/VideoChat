@@ -28,20 +28,34 @@ from application.use_cases.login import LoginUseCase
 from application.use_cases.register import RegisterUseCase
 
 
+from pydantic import BaseModel
+
+
+class RegisterUser(BaseModel):
+    username: str
+    password: str
+    email: str
+
+
+class LoginUser(BaseModel):
+    username: str
+    password: str
+
+
 router = APIRouter()
 
 
 @router.post("/user/create")
 async def create_user(
     request: Request,
-    username: str,
-    password: str,
-    email: str,
+    body: RegisterUser,  # 👈 this is now the body
     session: Session = Depends(get_db),
 ):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     password_hasher: PasswordHasher = BcryptPasswordHasher()
     publisher: UserEventPublisher = request.app.state.publisher  # ✅ move this here
+
+    print(body.username, body.password, body.email)
 
     register_use_case = RegisterUseCase(
         publisher=publisher,
@@ -50,14 +64,16 @@ async def create_user(
     )
 
     try:
-        result = await register_use_case.execute(username, password, email)
+        result = await register_use_case.execute(
+            body.username, body.password, body.email
+        )
         return result
     except Exception as e:
         raise e
 
 
 @router.post("/user/login")
-async def login_user(username: str, password: str, session: Session = Depends(get_db)):
+async def login_user(body: LoginUser, session: Session = Depends(get_db)):
     user_repository = SQLAlchemyUserRepository(session)
     refresh_token_repository = SQLAlchemyRefreshTokenRepository(session)
     token_generator = JWTTokenGenerator()
@@ -74,7 +90,7 @@ async def login_user(username: str, password: str, session: Session = Depends(ge
         code_repository=code_repo,
     )
 
-    return await login_use_case.execute(username, password)
+    return await login_use_case.execute(body.username, body.password)
 
 
 @router.post("/user/verify-2fa")
