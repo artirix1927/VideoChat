@@ -1,0 +1,44 @@
+
+
+.form-wrapper{
+    position:absolute;
+    left:50%;
+    transform: translateX(-50%);
+    margin-block: 50px;
+    padding-inline: 36px;
+    padding-block: 32px;
+    border-radius: 12px;
+    border: 1px solid white;
+    width: 20%;
+}
+
+.form{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    justify-content: center;
+}
+
+.input-field {
+    background-color: rgb(39, 39, 39);
+    border-radius: 8px;
+    padding: 4px 8px;
+    color:white;
+
+}
+
+.input-field::placeholder{
+    color:rgb(180, 180, 180);
+}
+
+.submit-btn{
+    width: 80%;
+    margin-inline: auto;
+}
+
+
+.login-or-register{
+    float: right; 
+    text-align: center;
+    font-size:14px;
+}
