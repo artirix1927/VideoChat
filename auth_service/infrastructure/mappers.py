@@ -1,6 +1,10 @@
 # infrastructure/mappers.py
-from domain.models import User, RefreshToken
-from infrastructure.models import User as UserModel, RefreshToken as RefreshTokenModel
+from auth_service.domain.models import TwoFactorCode, User, RefreshToken
+from auth_service.infrastructure.models import (
+    User as UserModel,
+    RefreshToken as RefreshTokenModel,
+    TwoFactorCode as TwoFactorCodeModel,
+)
 
 
 def user_from_model(user_model: UserModel) -> User:
@@ -19,4 +23,13 @@ def refresh_token_from_model(rt_model: RefreshTokenModel) -> RefreshToken:
         token=rt_model.token,
         expires_at=rt_model.expires_at,
         revoked=rt_model.revoked,
+    )
+
+
+def two_factor_code_from_model(code_model: TwoFactorCodeModel) -> TwoFactorCode:
+    return TwoFactorCode(
+        id=code_model.id,
+        user_id=code_model.user_id,
+        expires_at=code_model.expires_at,
+        code=code_model.code,
     )

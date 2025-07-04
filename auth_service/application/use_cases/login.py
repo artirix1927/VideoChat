@@ -1,11 +1,14 @@
-from domain.repositories.refresh_token import RefreshTokenRepository
-from domain.repositories.password_hasher import PasswordHasher
-from domain.repositories.token_generator import TokenGenerator
-from domain.repositories.user import UserRepository
+from auth_service.infrastructure.messaging.publishers.user_events import (
+    UserEventPublisher,
+)
+from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
+from auth_service.domain.repositories.password_hasher import PasswordHasher
+from auth_service.domain.repositories.token_generator import TokenGenerator
+from auth_service.domain.repositories.user import UserRepository
 from fastapi import HTTPException
 
 
-from domain.repositories.two_factor_auth import (
+from auth_service.domain.repositories.two_factor_auth import (
     TwoFactorCodeSender,
     TwoFactorCodeRepository,
 )
@@ -20,14 +23,14 @@ class LoginUseCase:
         refresh_token_repository: RefreshTokenRepository,
         token_generator: TokenGenerator,
         password_hasher: PasswordHasher,
-        code_sender: TwoFactorCodeSender,
+        user_publisher: UserEventPublisher,
         code_repository: TwoFactorCodeRepository,
     ):
         self.user_repository = user_repository
         self.token_generator = token_generator
         self.password_hasher = password_hasher
         self.refresh_token_repository = refresh_token_repository
-        self.code_sender = code_sender
+        self.user_publisher = user_publisher
         self.code_repository = code_repository
 
     async def execute(self, username: str, password: str):
@@ -42,7 +45,7 @@ class LoginUseCase:
         code = f"{random.randint(100000, 999999)}"
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
 
-        await self.code_repository.save(user.id, code, expires_at)
-        await self.code_sender.send_code(user, code)
-
+        code_entity = await self.code_repository.save(user.id, code, expires_at)
+        await self.user_publisher.publish_two_factor_code_generated(code_entity)
+        print(123)
         return {"message": "2FA code sent", "user_id": user.id}

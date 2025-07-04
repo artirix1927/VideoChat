@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from domain.models import RefreshToken
+from auth_service.domain.models import RefreshToken
 
 
 class RefreshTokenRepository(ABC):

@@ -1,31 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 
-from application.use_cases.delete import DeleteUseCase
-from infrastructure.repositories.sqlalchemy_2fa_code import (
+from auth_service.application.use_cases.delete import DeleteUseCase
+from auth_service.infrastructure.repositories.sqlalchemy_2fa_code import (
     SQLAlchemyTwoFactorCodeRepository,
 )
-from infrastructure.services.email_sender import EmailTwoFactorSender
-from infrastructure.messaging.publishers.user_events import (
+from auth_service.infrastructure.services.email_sender import EmailTwoFactorSender
+from auth_service.infrastructure.messaging.publishers.user_events import (
     UserEventPublisher,
 )
-from infrastructure.repositories.sqlalchemy_refresh_token import (
+from auth_service.infrastructure.repositories.sqlalchemy_refresh_token import (
     SQLAlchemyRefreshTokenRepository,
 )
-from domain.repositories.password_hasher import PasswordHasher
-from domain.repositories.user import UserRepository
-from infrastructure.db_session import get_db
+from auth_service.domain.repositories.password_hasher import PasswordHasher
+from auth_service.domain.repositories.user import UserRepository
+from auth_service.infrastructure.db_session import get_db
 from sqlalchemy.orm import Session
 
-from infrastructure.repositories.sqlalchemy_user import (
+from auth_service.infrastructure.repositories.sqlalchemy_user import (
     SQLAlchemyUserRepository,
 )
-from infrastructure.services.jwt_token_generator import JWTTokenGenerator
-from infrastructure.services.password_hasher import BcryptPasswordHasher
+from auth_service.infrastructure.services.jwt_token_generator import JWTTokenGenerator
+from auth_service.infrastructure.services.password_hasher import BcryptPasswordHasher
 
 
-from application.use_cases.login import LoginUseCase
-from application.use_cases.register import RegisterUseCase
+from auth_service.application.use_cases.login import LoginUseCase
+from auth_service.application.use_cases.register import RegisterUseCase
 
 
 from pydantic import BaseModel
@@ -73,12 +73,14 @@ async def create_user(
 
 
 @router.post("/user/login")
-async def login_user(body: LoginUser, session: Session = Depends(get_db)):
+async def login_user(
+    request: Request, body: LoginUser, session: Session = Depends(get_db)
+):
     user_repository = SQLAlchemyUserRepository(session)
     refresh_token_repository = SQLAlchemyRefreshTokenRepository(session)
     token_generator = JWTTokenGenerator()
     password_hasher = BcryptPasswordHasher()
-    code_sender = EmailTwoFactorSender()
+    user_event_publisher: UserEventPublisher = request.app.state.publisher
     code_repo = SQLAlchemyTwoFactorCodeRepository(session)
 
     login_use_case = LoginUseCase(
@@ -86,7 +88,7 @@ async def login_user(body: LoginUser, session: Session = Depends(get_db)):
         token_generator=token_generator,
         password_hasher=password_hasher,
         refresh_token_repository=refresh_token_repository,
-        code_sender=code_sender,
+        user_publisher=user_event_publisher,
         code_repository=code_repo,
     )
 

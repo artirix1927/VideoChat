@@ -1,6 +1,8 @@
-from infrastructure.messaging.publishers.user_events import UserEventPublisher
-from domain.repositories.password_hasher import PasswordHasher
-from domain.repositories.user import UserRepository
+from auth_service.infrastructure.messaging.publishers.user_events import (
+    UserEventPublisher,
+)
+from auth_service.domain.repositories.password_hasher import PasswordHasher
+from auth_service.domain.repositories.user import UserRepository
 
 
 class RegisterUseCase:

@@ -1,10 +1,10 @@
 from datetime import datetime
-from domain.models import RefreshToken
-from infrastructure.models import RefreshToken as RefreshTokenModel
-from domain.repositories.refresh_token import RefreshTokenRepository
+from auth_service.domain.models import RefreshToken
+from auth_service.infrastructure.models import RefreshToken as RefreshTokenModel
+from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from infrastructure.mappers import refresh_token_from_model
+from auth_service.infrastructure.mappers import refresh_token_from_model
 
 
 class SQLAlchemyRefreshTokenRepository(RefreshTokenRepository):

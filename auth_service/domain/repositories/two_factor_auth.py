@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from domain.models import User
+from auth_service.domain.models import User
 
 
 class TwoFactorCodeSender(ABC):

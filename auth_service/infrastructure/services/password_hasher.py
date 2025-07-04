@@ -1,6 +1,6 @@
 from passlib.context import CryptContext
 
-from domain.repositories.password_hasher import PasswordHasher
+from auth_service.domain.repositories.password_hasher import PasswordHasher
 
 
 class BcryptPasswordHasher(PasswordHasher):

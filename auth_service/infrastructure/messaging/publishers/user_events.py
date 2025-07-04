@@ -1,7 +1,21 @@
+from datetime import datetime
 import json
-from domain.models import TwoFactorCode, User
+
+from sqlalchemy import UUID
+from auth_service.domain.models import TwoFactorCode, User
 import aio_pika
 from dataclasses import asdict
+
+
+def serialize_event(event):
+    def default(o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if isinstance(o, UUID):
+            return str(o)
+        return str(o)  # fallback
+
+    return json.dumps(event, default=default)
 
 
 class UserEventPublisher:
@@ -17,9 +31,7 @@ class UserEventPublisher:
 
     async def publish_two_factor_code_generated(self, event: TwoFactorCode):
         channel = await self.connection.channel()
-        exchange = await channel.declare_exchange(
-            "user.events", aio_pika.ExchangeType.FANOUT
-        )
-        await exchange.publish(
-            aio_pika.Message(body=json.dumps(asdict(event)).encode()), routing_key=""
+        await channel.default_exchange.publish(
+            aio_pika.Message(body=serialize_event(asdict(event)).encode()),
+            routing_key="user.events",
         )

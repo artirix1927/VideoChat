@@ -1,8 +1,8 @@
-from domain.models import User
-from domain.repositories.user import UserRepository
-from infrastructure.models import User as UserModel
+from auth_service.domain.models import User
+from auth_service.domain.repositories.user import UserRepository
+from auth_service.infrastructure.models import User as UserModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from infrastructure.mappers import user_from_model
+from auth_service.infrastructure.mappers import user_from_model
 from sqlalchemy.future import select
 
 

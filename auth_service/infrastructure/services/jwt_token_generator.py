@@ -1,6 +1,6 @@
-from domain.models import User
-from domain.repositories.token_generator import TokenGenerator
-from jwt_config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from auth_service.domain.models import User
+from auth_service.domain.repositories.token_generator import TokenGenerator
+from auth_service.jwt_config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
 from jose import jwt
 from datetime import datetime, timedelta, timezone, UTC
 

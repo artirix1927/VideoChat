@@ -1,5 +1,5 @@
-from domain.models import User
-from domain.repositories.user import UserRepository
+from auth_service.domain.models import User
+from auth_service.domain.repositories.user import UserRepository
 
 
 class DeleteUseCase:

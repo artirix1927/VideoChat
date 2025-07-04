@@ -2,8 +2,10 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import aio_pika
 
-from infrastructure.messaging.publishers.user_events import UserEventPublisher
-from interface.routes import router as auth_router
+from auth_service.infrastructure.messaging.publishers.user_events import (
+    UserEventPublisher,
+)
+from auth_service.interface.routes import router as auth_router
 
 
 from fastapi.middleware.cors import CORSMiddleware
