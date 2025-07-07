@@ -1,3 +1,4 @@
+import secrets
 from auth_service.domain.models import User
 from auth_service.domain.repositories.token_generator import TokenGenerator
 from auth_service.jwt_config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
@@ -32,9 +33,8 @@ class JWTTokenGenerator(TokenGenerator):
         payload = self._build_payload(user.id, timedelta(minutes=15))
         return jwt.encode(payload, self.SECRET_KEY, algorithm=self.ALGORITHM)
 
-    def generate_refresh_token(self, user: User) -> str:
-        payload = self._build_payload(user.id, timedelta(days=30))
-        return jwt.encode(payload, self.SECRET_KEY, algorithm=self.ALGORITHM)
+    def generate_refresh_token(self) -> str:
+        return secrets.token_urlsafe(64)
 
     def decode_payload(self, token: str):
         return jwt.decode(
