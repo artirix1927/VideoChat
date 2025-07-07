@@ -5,8 +5,8 @@ import '../styles/register.css'
 
 import { useState } from "react";
 import { useMutation } from '@tanstack/react-query';
-import { apiUrl } from '@/constants';
 import { useRouter } from "next/navigation";
+import { api } from '@/api';
 
 type RegisterData = {
     username: string;
@@ -15,19 +15,6 @@ type RegisterData = {
     confirmPassword?: string; // optional field example
 };
 
-
-async function registerUser(data: { username: string; password: string, email: string}) {
-  const res = await fetch(`${apiUrl}/user/create`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error("Registration failed");
-  return res.json();
-}
 
 
 
@@ -39,11 +26,14 @@ export const RegisterForm = () =>{
     confirmPassword: "",
   });
 
-  const { mutate } = useMutation({
-    mutationFn: registerUser,
-  });
-
   const router = useRouter();
+  
+  const { mutate: register } = useMutation({
+    mutationFn: api.register,
+    onSuccess: () => {
+      router.push("/auth/login");
+    },
+  });
 
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -55,7 +45,7 @@ export const RegisterForm = () =>{
     const samePasswords = formData.password == formData.confirmPassword
     if (samePasswords){
       const reqData = {username: formData.username, password:formData.password, email:formData.email}
-      mutate(reqData, {
+      register(reqData, {
         onSuccess: () => {
           router.push("/auth/login");
         },

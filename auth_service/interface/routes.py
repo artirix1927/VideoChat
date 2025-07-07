@@ -1,10 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 
 from auth_service.application.use_cases.delete import DeleteUseCase
+from auth_service.application.use_cases.get_user import GetUserUseCase
+from auth_service.application.use_cases.verify_refresh_token import (
+    VerifyRefreshTokenUseCase,
+)
+from auth_service.domain.repositories import token_generator
+from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
+from auth_service.domain.repositories.token_generator import TokenGenerator
 from auth_service.infrastructure.repositories.sqlalchemy_2fa_code import (
     SQLAlchemyTwoFactorCodeRepository,
 )
+from auth_service.infrastructure.services import jwt_token_generator
 from auth_service.infrastructure.services.email_sender import EmailTwoFactorSender
 from auth_service.infrastructure.messaging.publishers.user_events import (
     UserEventPublisher,
@@ -40,6 +49,15 @@ class RegisterUser(BaseModel):
 class LoginUser(BaseModel):
     username: str
     password: str
+
+
+class VerifyUser(BaseModel):
+    user_id: int
+    code: str
+
+
+class GetUser(BaseModel):
+    access_token: str
 
 
 router = APIRouter()
@@ -96,14 +114,14 @@ async def login_user(
 
 
 @router.post("/user/verify-2fa")
-async def verify_2fa(user_id: int, code: str, session: Session = Depends(get_db)):
+async def verify_2fa(body: VerifyUser, session: Session = Depends(get_db)):
     user_repository = SQLAlchemyUserRepository(session)
     refresh_token_repo = SQLAlchemyRefreshTokenRepository(session)
     token_generator = JWTTokenGenerator()
     code_repo = SQLAlchemyTwoFactorCodeRepository(session)
 
-    user = await user_repository.get_by_id(user_id)
-    if not user or not code_repo.verify(user_id, code):
+    user = await user_repository.get_by_id(body.user_id)
+    if not user or not code_repo.verify(body.user_id, body.code):
         raise HTTPException(status_code=401, detail="Invalid 2FA code")
 
     access_token = token_generator.generate_access_token(user)
@@ -112,7 +130,27 @@ async def verify_2fa(user_id: int, code: str, session: Session = Depends(get_db)
 
     await refresh_token_repo.create_or_update_refresh_token(refresh_token, uid, exp)
 
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    response = JSONResponse(content={"access_token": access_token})
+
+    # ✅ Set cookies
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",  # or "lax" depending on your frontend
+        max_age=60 * 60 * 24 * 7,  # 7 days
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",  # or "lax" depending on your frontend
+        max_age=60 * 15,  # 5 min
+    )
+
+    return response
 
 
 @router.post("/user/delete")
@@ -122,5 +160,64 @@ async def delete_user(user_id: int, session: Session = Depends(get_db)):
     try:
         result = await delete_use_case.execute(user_id=user_id)
         return result
+    except Exception as e:
+        raise e
+
+
+@router.get("/user/")
+async def get_user_by_access_token(
+    request: Request, session: Session = Depends(get_db)
+):
+    access_token = request.cookies.get("access_token")
+
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Access token missing")
+
+    user_repository: UserRepository = SQLAlchemyUserRepository(session)
+    jwt_token_generator: TokenGenerator = JWTTokenGenerator()
+    get_user_use_case = GetUserUseCase(
+        user_repository=user_repository, token_generator=jwt_token_generator
+    )
+
+    try:
+        result = await get_user_use_case.execute(access_token)
+        return result
+    except Exception as e:
+        raise e
+
+
+@router.get("/user/verify-referesh-token/")
+async def verify_refresh_token(request: Request, session: Session = Depends(get_db)):
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    refresh_token_repo: RefreshTokenRepository = SQLAlchemyRefreshTokenRepository(
+        session
+    )
+
+    user_repo: UserRepository = SQLAlchemyUserRepository(session)
+    jwt_token_generator: TokenGenerator = JWTTokenGenerator()
+
+    verify_refresh_token_use_case = VerifyRefreshTokenUseCase(
+        refresh_token_repository=refresh_token_repo,
+        user_repository=user_repo,
+        token_generator=jwt_token_generator,
+    )
+    try:
+        response = JSONResponse(content={})
+        access_token = await verify_refresh_token_use_case.execute(refresh_token)
+
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",  # or "lax" depending on your frontend
+            max_age=60 * 15,  # 5 min
+        )
+
+        return response
     except Exception as e:
         raise e

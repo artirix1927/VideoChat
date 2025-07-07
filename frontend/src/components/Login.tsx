@@ -11,23 +11,9 @@ type LoginData = {
 };
 
 
-import { apiUrl } from '@/constants';
 import { useMutation } from '@tanstack/react-query';
 import TwoFactorPopup from './TwoFactorPopUp';
-
-async function loginUser(data: { username: string; password: string}) {
-  const res = await fetch(`${apiUrl}/user/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error("Registration failed");
-  return res.json();
-}
-
+import { api } from '@/api';
 
 
 export const LoginForm = () =>{
@@ -37,10 +23,14 @@ export const LoginForm = () =>{
   });
 
   const [show2FA, setShow2FA] = useState(false);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState<number | undefined>(undefined);;
 
-  const { mutate, isPending, isSuccess, isError, error } = useMutation({
-    mutationFn: loginUser,
+  const { mutate: login, isPending } = useMutation({
+    mutationFn: api.login,
+    onSuccess: (data) => {
+      setShow2FA(true); // show 2FA popup
+      setUserId(data.user_id);
+    }
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -51,13 +41,7 @@ export const LoginForm = () =>{
     e.preventDefault();
    
     const reqData = {username: formData.username, password:formData.password}
-    mutate(reqData, {
-      onSuccess: (data) => {
-        setShow2FA(true); // show 2FA popup
-        setUserId(data.user_id)
-        console.log(data)
-      },
-    });
+    login(reqData);
   }
   
 

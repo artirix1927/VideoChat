@@ -1,6 +1,8 @@
 "use client";
+import { api } from "@/api";
 import { apiUrl } from "@/constants";
 import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type TwoFactorPopupProps = {
@@ -9,33 +11,23 @@ type TwoFactorPopupProps = {
 };
 
 
-async function verifyUser(data: { user_id: number, code: string}) {
-  const res = await fetch(`${apiUrl}/user/verify-2fa`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error("Registration failed");
-  return res.json();
-}
-
-
-
 export default function TwoFactorPopup({ user_id, onClose }: TwoFactorPopupProps) {
   const [code, setCode] = useState("");
+  const router = useRouter();
+  
 
-
-  const { mutate } = useMutation({
-    mutationFn: verifyUser,
+  const { mutate: verify, isPending } = useMutation({
+     mutationFn: api.verify2fa,
+     onSuccess: () => {
+        router.push("/")
+      }
+     
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const reqData = {user_id: user_id, code: code}
-    mutate(reqData);
+    verify(reqData);
 
   };
 
