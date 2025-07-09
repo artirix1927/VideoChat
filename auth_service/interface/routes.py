@@ -4,8 +4,14 @@ from fastapi.responses import JSONResponse
 
 from auth_service.application.use_cases.delete import DeleteUseCase
 from auth_service.application.use_cases.get_user import GetUserUseCase
+from auth_service.application.use_cases.verify_2fa import Verify2FAUseCase
 from auth_service.application.use_cases.verify_refresh_token import (
     VerifyRefreshTokenUseCase,
+)
+from auth_service.domain.exceptions import (
+    Invalid2FACode,
+    RefreshTokenExpired,
+    UserNotFound,
 )
 from auth_service.domain.repositories import token_generator
 from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
@@ -36,29 +42,7 @@ from auth_service.infrastructure.services.password_hasher import BcryptPasswordH
 from auth_service.application.use_cases.login import LoginUseCase
 from auth_service.application.use_cases.register import RegisterUseCase
 
-
-from pydantic import BaseModel
-
-
-class RegisterUser(BaseModel):
-    username: str
-    password: str
-    email: str
-
-
-class LoginUser(BaseModel):
-    username: str
-    password: str
-
-
-class VerifyUser(BaseModel):
-    user_id: int
-    code: str
-
-
-class GetUser(BaseModel):
-    access_token: str
-
+import dto as dto_models
 
 router = APIRouter()
 
@@ -66,14 +50,12 @@ router = APIRouter()
 @router.post("/user/create")
 async def create_user(
     request: Request,
-    body: RegisterUser,  # 👈 this is now the body
+    body: dto_models.RegisterUser,  # 👈 this is now the body
     session: Session = Depends(get_db),
 ):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     password_hasher: PasswordHasher = BcryptPasswordHasher()
     publisher: UserEventPublisher = request.app.state.publisher  # ✅ move this here
-
-    print(body.username, body.password, body.email)
 
     register_use_case = RegisterUseCase(
         publisher=publisher,
@@ -81,18 +63,13 @@ async def create_user(
         password_hasher=password_hasher,
     )
 
-    try:
-        result = await register_use_case.execute(
-            body.username, body.password, body.email
-        )
-        return result
-    except Exception as e:
-        raise e
+    result = await register_use_case.execute(body.username, body.password, body.email)
+    return result
 
 
 @router.post("/user/login")
 async def login_user(
-    request: Request, body: LoginUser, session: Session = Depends(get_db)
+    request: Request, body: dto_models.LoginUser, session: Session = Depends(get_db)
 ):
     user_repository = SQLAlchemyUserRepository(session)
     refresh_token_repository = SQLAlchemyRefreshTokenRepository(session)
@@ -110,58 +87,61 @@ async def login_user(
         code_repository=code_repo,
     )
 
-    return await login_use_case.execute(body.username, body.password)
+    try:
+        await login_use_case.execute(body.username, body.password)
+    except:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    return
 
 
 @router.post("/user/verify-2fa")
-async def verify_2fa(body: VerifyUser, session: Session = Depends(get_db)):
-    user_repository = SQLAlchemyUserRepository(session)
-    refresh_token_repo = SQLAlchemyRefreshTokenRepository(session)
-    token_generator = JWTTokenGenerator()
-    code_repo = SQLAlchemyTwoFactorCodeRepository(session)
-
-    user = await user_repository.get_by_id(body.user_id)
-    if not user or not code_repo.verify(body.user_id, body.code):
-        raise HTTPException(status_code=401, detail="Invalid 2FA code")
-
-    access_token = token_generator.generate_access_token(user)
-    refresh_token = token_generator.generate_refresh_token(user)
-    uid, exp = token_generator.extract_from_payload(refresh_token)
-
-    await refresh_token_repo.create_or_update_refresh_token(refresh_token, uid, exp)
-
-    response = JSONResponse(content={"access_token": access_token})
-
-    # ✅ Set cookies
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",  # or "lax" depending on your frontend
-        max_age=60 * 60 * 24 * 7,  # 7 days
-    )
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",  # or "lax" depending on your frontend
-        max_age=60 * 15,  # 5 min
+async def verify_2fa(body: dto_models.VerifyUser, session: Session = Depends(get_db)):
+    use_case = Verify2FAUseCase(
+        user_repo=SQLAlchemyUserRepository(session),
+        refresh_token_repo=SQLAlchemyRefreshTokenRepository(session),
+        token_generator=JWTTokenGenerator(),
+        code_repo=SQLAlchemyTwoFactorCodeRepository(session),
     )
 
-    return response
+    try:
+        access_token, refresh_token = await use_case.execute(body.user_id, body.code)
+
+        response = JSONResponse(content={"access_token": access_token})
+
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=60 * 60 * 24 * 7,
+        )
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=60 * 15,
+        )
+        return response
+
+    except UserNotFound:
+        raise HTTPException(status_code=401, detail="User not found")
+    except Invalid2FACode:
+        HTTPException(status_code=401, detail="Invalid 2FA code")
+
+    return
 
 
 @router.post("/user/delete")
 async def delete_user(user_id: int, session: Session = Depends(get_db)):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
     delete_use_case = DeleteUseCase(user_repository=user_repository, id=user_id)
-    try:
-        result = await delete_use_case.execute(user_id=user_id)
-        return result
-    except Exception as e:
-        raise e
+
+    result = await delete_use_case.execute(user_id=user_id)
+    return result
 
 
 @router.get("/user/")
@@ -179,11 +159,8 @@ async def get_user_by_access_token(
         user_repository=user_repository, token_generator=jwt_token_generator
     )
 
-    try:
-        result = await get_user_use_case.execute(access_token)
-        return result
-    except Exception as e:
-        raise e
+    result = await get_user_use_case.execute(access_token)
+    return result
 
 
 @router.get("/user/verify-referesh-token/")
@@ -205,8 +182,9 @@ async def verify_refresh_token(request: Request, session: Session = Depends(get_
         user_repository=user_repo,
         token_generator=jwt_token_generator,
     )
+
+    response = JSONResponse(content={})
     try:
-        response = JSONResponse(content={})
         access_token = await verify_refresh_token_use_case.execute(refresh_token)
 
         response.set_cookie(
@@ -214,10 +192,10 @@ async def verify_refresh_token(request: Request, session: Session = Depends(get_
             value=access_token,
             httponly=True,
             secure=True,
-            samesite="strict",  # or "lax" depending on your frontend
+            samesite="strict",  # or s"lax" depending on your frontend
             max_age=60 * 15,  # 5 min
         )
+    except RefreshTokenExpired:
+        raise HTTPException(status_code=401, detail="Refresh token is expired")
 
-        return response
-    except Exception as e:
-        raise e
+    return response
