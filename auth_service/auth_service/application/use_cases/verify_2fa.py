@@ -1,9 +1,10 @@
+from calendar import month
+from datetime import datetime, timedelta, timezone
 from auth_service.domain.exceptions import Invalid2FACode, UserNotFound
-from domain.repositories.user import UserRepository
-from domain.repositories.token_generator import TokenGenerator
-from domain.repositories.two_factor_auth import TwoFactorCodeRepository
-from domain.repositories.refresh_token import RefreshTokenRepository
-from fastapi import HTTPException
+from auth_service.domain.repositories.user import UserRepository
+from auth_service.domain.repositories.token_generator import TokenGenerator
+from auth_service.domain.repositories.two_factor_auth import TwoFactorCodeRepository
+from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
 
 
 class Verify2FAUseCase:
@@ -24,15 +25,14 @@ class Verify2FAUseCase:
         if not user:
             raise UserNotFound()
 
-        if not self.code_repo.verify(user_id, code):
+        if not await self.code_repo.verify(user_id, code):
             raise Invalid2FACode()
 
         access_token = self.token_generator.generate_access_token(user)
-        refresh_token = self.token_generator.generate_refresh_token(user)
-        uid, exp = self.token_generator.extract_from_payload(refresh_token)
-
+        refresh_token = self.token_generator.generate_refresh_token()
+        refresh_token_exp = datetime.now(timezone.utc) + timedelta(days=30)
         await self.refresh_token_repo.create_or_update_refresh_token(
-            refresh_token, uid, exp
+            refresh_token, user_id, refresh_token_exp
         )
 
         return access_token, refresh_token

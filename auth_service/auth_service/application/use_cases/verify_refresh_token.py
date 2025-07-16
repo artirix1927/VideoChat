@@ -26,7 +26,7 @@ class VerifyRefreshTokenUseCase:
             return None
 
         now = datetime.now()
-        if token.expires_at > now:
+        if token.expires_at < now:
             raise RefreshTokenExpired()
 
         user = await self.user_repository.get_by_id(token.user_id)

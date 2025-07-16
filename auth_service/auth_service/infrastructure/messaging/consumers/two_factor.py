@@ -3,6 +3,10 @@ from auth_service.infrastructure.services.email_sender import EmailTwoFactorSend
 import asyncio
 import aio_pika
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 async def handle_two_factor_code_generated(event: dict):
     sender = EmailTwoFactorSender()
@@ -10,7 +14,9 @@ async def handle_two_factor_code_generated(event: dict):
 
 
 async def main():
-    connection = await aio_pika.connect_robust("amqp://guest:guest@localhost/")
+    connection = await aio_pika.connect_robust(
+        "amqp://guest:guest@rabbitmq/",
+    )
     channel = await connection.channel()
 
     queue = await channel.declare_queue("user.events", durable=True)
@@ -20,7 +26,6 @@ async def main():
             async with message.process():
                 data = message.body.decode()
                 data = json.loads(data)
-                print(data)
                 await handle_two_factor_code_generated(data)
 
 

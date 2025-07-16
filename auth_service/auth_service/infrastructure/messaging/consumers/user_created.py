@@ -18,7 +18,9 @@ import aio_pika
 
 
 async def main():
-    connection = await aio_pika.connect_robust("amqp://guest:guest@localhost/")
+    connection = await aio_pika.connect_robust(
+        "amqp://guest:guest@rabbitmq/",
+    )
     channel = await connection.channel()
 
     queue = await channel.declare_queue("user.created", durable=True)

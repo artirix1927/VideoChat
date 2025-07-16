@@ -10,7 +10,7 @@ class TokenGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_refresh_token(self, user) -> str:
+    def generate_refresh_token(self) -> str:
         pass
 
     @abstractmethod

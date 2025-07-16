@@ -10,6 +10,7 @@ from auth_service.application.use_cases.verify_refresh_token import (
 )
 from auth_service.domain.exceptions import (
     Invalid2FACode,
+    InvalidCredentials,
     RefreshTokenExpired,
     UserNotFound,
 )
@@ -42,7 +43,7 @@ from auth_service.infrastructure.services.password_hasher import BcryptPasswordH
 from auth_service.application.use_cases.login import LoginUseCase
 from auth_service.application.use_cases.register import RegisterUseCase
 
-import dto as dto_models
+import auth_service.interface.dto as dto_models
 
 router = APIRouter()
 
@@ -88,11 +89,9 @@ async def login_user(
     )
 
     try:
-        await login_use_case.execute(body.username, body.password)
-    except:
+        return await login_use_case.execute(body.username, body.password)
+    except InvalidCredentials:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    return
 
 
 @router.post("/user/verify-2fa")
@@ -113,18 +112,22 @@ async def verify_2fa(body: dto_models.VerifyUser, session: Session = Depends(get
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
-            samesite="strict",
+            secure=False,  # False for HTTP
+            samesite="lax",  # Works with HTTP
             max_age=60 * 60 * 24 * 7,
+            domain="localhost",  # If frontend/backend are on different ports
         )
+
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=True,
-            samesite="strict",
+            secure=False,  # False for HTTP
+            samesite="lax",  # Works with HTTP
             max_age=60 * 15,
+            domain="localhost",  # If frontend/backend are on different ports
         )
+
         return response
 
     except UserNotFound:
@@ -149,7 +152,7 @@ async def get_user_by_access_token(
     request: Request, session: Session = Depends(get_db)
 ):
     access_token = request.cookies.get("access_token")
-
+    print(request.cookies)
     if not access_token:
         raise HTTPException(status_code=401, detail="Access token missing")
 
@@ -191,9 +194,10 @@ async def verify_refresh_token(request: Request, session: Session = Depends(get_
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=True,
-            samesite="strict",  # or s"lax" depending on your frontend
-            max_age=60 * 15,  # 5 min
+            secure=False,  # False for HTTP
+            samesite="lax",  # Works with HTTP
+            max_age=60 * 15,
+            domain="localhost",  # If frontend/backend are on different ports
         )
     except RefreshTokenExpired:
         raise HTTPException(status_code=401, detail="Refresh token is expired")
