@@ -25,7 +25,7 @@ export const LoginForm = () =>{
   const [show2FA, setShow2FA] = useState(false);
   const [userId, setUserId] = useState<number | undefined>(undefined);;
 
-  const { mutate: login, isPending } = useMutation({
+  const { mutate: login } = useMutation({
     mutationFn: api.login,
     onSuccess: (data) => {
       setShow2FA(true); // show 2FA popup

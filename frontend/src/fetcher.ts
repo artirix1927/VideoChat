@@ -1,5 +1,5 @@
 // lib/fetcher.ts
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
 
 export async function fetcher<T>(
   endpoint: string,

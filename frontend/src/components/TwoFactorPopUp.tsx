@@ -1,6 +1,6 @@
 "use client";
 import { api } from "@/api";
-import { apiUrl } from "@/constants";
+import { useAuth } from "@/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,10 +15,12 @@ export default function TwoFactorPopup({ user_id, onClose }: TwoFactorPopupProps
   const [code, setCode] = useState("");
   const router = useRouter();
   
+  const { revalidate } = useAuth(); // Get revalidate from context
 
-  const { mutate: verify, isPending } = useMutation({
+  const { mutate: verify } = useMutation({
      mutationFn: api.verify2fa,
-     onSuccess: () => {
+     onSuccess: async () => {
+        await revalidate(); // Force auth state update
         router.push("/")
       }
      

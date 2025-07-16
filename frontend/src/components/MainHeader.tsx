@@ -9,7 +9,7 @@ export const MainHeader = () => {
 
             <h6 className="text-xl text-center"> 
             Calls make it easy to connect with people, 
-            no matter how far apart you are. Whether it's chatting with friends, 
+            no matter how far apart you are. Whether it&apos;s chatting with friends, 
             working with colleagues, or sharing special moments with family.</h6>
 
             <button className="p-3 rounded-sm text-md bg-purple-600 mx-auto w-60">Use for free</button>

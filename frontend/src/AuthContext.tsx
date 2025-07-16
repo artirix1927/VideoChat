@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiUrl } from "./constants";
 
 type User = {
   id: number;
@@ -11,6 +12,7 @@ type AuthContextType = {
   user: User | null;
   setUser: (user: User | null) => void;
   loading: boolean;
+  revalidate: () => Promise<void>; // Add this
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,7 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   const fetchUser = async (): Promise<User | null> => {
-    const res = await fetch("http://localhost:8000/user/", {
+    const res = await fetch(`${apiUrl}/user/`, {
       credentials: "include",
     });
     if (!res.ok) return null;
@@ -27,7 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const refreshAccessToken = async (): Promise<undefined> => {
-    await fetch("http://localhost:8000/user/verify-referesh-token", {
+    await fetch(`${apiUrl}/user/verify-referesh-token`, {
       credentials: "include",
     });
   };
@@ -50,8 +52,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeUser();
   }, []);
 
+
+  const revalidate = async () => {
+    setLoading(true);
+    try {
+      let userData = await fetchUser();
+      if (!userData) {
+        await refreshAccessToken();
+        userData = await fetchUser();
+      }
+      setUser(userData);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, setUser, loading }}>
+    <AuthContext.Provider value={{ user, setUser, loading, revalidate }}>
       {children}
     </AuthContext.Provider>
   );
