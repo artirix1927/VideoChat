@@ -55,6 +55,9 @@ services:
       - auth_service
       - signaling_service
     restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
   rabbitmq:
     image: rabbitmq:3.13-management
