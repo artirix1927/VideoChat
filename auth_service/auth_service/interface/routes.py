@@ -14,14 +14,13 @@ from auth_service.domain.exceptions import (
     RefreshTokenExpired,
     UserNotFound,
 )
-from auth_service.domain.repositories import token_generator
+
 from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
 from auth_service.domain.repositories.token_generator import TokenGenerator
 from auth_service.infrastructure.repositories.sqlalchemy_2fa_code import (
     SQLAlchemyTwoFactorCodeRepository,
 )
-from auth_service.infrastructure.services import jwt_token_generator
-from auth_service.infrastructure.services.email_sender import EmailTwoFactorSender
+
 from auth_service.infrastructure.messaging.publishers.user_events import (
     UserEventPublisher,
 )
@@ -51,7 +50,7 @@ router = APIRouter()
 @router.post("/user/create")
 async def create_user(
     request: Request,
-    body: dto_models.RegisterUser,  # 👈 this is now the body
+    body: dto_models.RegisterUser,
     session: Session = Depends(get_db),
 ):
     user_repository: UserRepository = SQLAlchemyUserRepository(session)
