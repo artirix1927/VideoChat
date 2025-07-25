@@ -19,3 +19,7 @@ class VerifyUser(BaseModel):
 
 class GetUser(BaseModel):
     access_token: str
+
+
+class GetUsersByIds(BaseModel):
+    ids: list[int]

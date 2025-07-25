@@ -14,6 +14,16 @@ class SQLAlchemyUserRepository(UserRepository):
         user_model = await self.session.get(UserModel, user_id)
         return user_from_model(user_model) if user_model else None
 
+    async def get_by_ids(self, user_ids: list[int]) -> list[User]:
+        if not user_ids:
+            return []
+
+        stmt = select(UserModel).where(UserModel.id.in_(user_ids))
+        result = await self.session.execute(stmt)
+        user_models = result.scalars().all()
+
+        return [user_from_model(model) for model in user_models]
+
     async def get_by_username(self, username: str) -> User:
         stmt = select(UserModel).filter_by(username=username)
         result = await self.session.execute(stmt)

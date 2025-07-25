@@ -8,6 +8,9 @@ from auth_service.application.use_cases.verify_2fa import Verify2FAUseCase
 from auth_service.application.use_cases.verify_refresh_token import (
     VerifyRefreshTokenUseCase,
 )
+from auth_service.application.use_cases.get_users_by_ids import (
+    GetUsersByIdsUseCase,
+)
 from auth_service.domain.exceptions import (
     Invalid2FACode,
     InvalidCredentials,
@@ -202,3 +205,17 @@ async def verify_refresh_token(request: Request, session: Session = Depends(get_
         raise HTTPException(status_code=401, detail="Refresh token is expired")
 
     return response
+
+
+@router.post("/users-by-ids/")
+async def get_users_by_ids(
+    body: dto_models.GetUsersByIds, session: Session = Depends(get_db)
+):
+    user_repository: UserRepository = SQLAlchemyUserRepository(session)
+
+    get_users_by_ids_use_case = GetUsersByIdsUseCase(
+        user_repository=user_repository,
+    )
+
+    result = await get_users_by_ids_use_case.execute(body.ids)
+    return {"users": result}

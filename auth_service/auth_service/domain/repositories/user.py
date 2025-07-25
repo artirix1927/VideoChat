@@ -26,3 +26,7 @@ class UserRepository(ABC):
     @abstractmethod
     async def delete(user: User):
         pass
+
+    @abstractmethod
+    async def get_by_ids(user_ids: list[int]) -> list[User]:
+        pass
