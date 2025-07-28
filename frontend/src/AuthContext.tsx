@@ -1,19 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiUrl } from "./constants";
 
-type User = {
-  id: number;
-  username: string;
-  email: string;
-};
+import { User, AuthContextType } from "./types"; // adjust path if needed
 
-
-type AuthContextType = {
-  user: User | null;
-  setUser: (user: User | null) => void;
-  loading: boolean;
-  revalidate: () => Promise<void>; // Add this
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

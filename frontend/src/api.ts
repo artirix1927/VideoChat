@@ -1,5 +1,8 @@
 // lib/api.ts
-import { fetcher } from "./fetcher";
+import { chatFetcher, fetcher } from "./fetcher";
+import { FriendRequest } from "./types";
+
+
 
 export const api = {
 
@@ -20,4 +23,17 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
     }),
+
+    getFriends: (data: { user_id: number; }) =>
+        chatFetcher<{ friends: FriendRequest[] }>(`/chat/friends?user_id=${data.user_id}`, {
+            method: "GET",
+        }),
+
+    getFriendRequests: (data: { user_id: number; }) =>
+        chatFetcher<{ friend_requests: FriendRequest[] }>(`/chat/friend-requests?user_id=${data.user_id}`, {
+            method: "GET",
+        }),
+
+    
+
 };
