@@ -21,6 +21,23 @@ services:
     environment:
       - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/auth_service/db.sqlite3
     
+  chat_service:
+    build: ./chat_service
+    container_name: chat_service
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./chat_service:/app
+      - ./chat_service/chat_service/db.sqlite3:/app/chat_service/db.sqlite3
+
+    environment:
+      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/chat_service/db.sqlite3
+   
+
+
 
   two_factor_consumer:
     build: ./auth_service
