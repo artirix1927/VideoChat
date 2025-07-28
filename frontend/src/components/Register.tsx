@@ -16,8 +16,6 @@ type RegisterData = {
 };
 
 
-
-
 export const RegisterForm = () =>{
   const [formData, setFormData] = useState<RegisterData>({
     username: "",
@@ -45,11 +43,7 @@ export const RegisterForm = () =>{
     const samePasswords = formData.password == formData.confirmPassword
     if (samePasswords){
       const reqData = {username: formData.username, password:formData.password, email:formData.email}
-      register(reqData, {
-        onSuccess: () => {
-          router.push("/auth/login");
-        },
-      });
+      register(reqData);
     }
   }
 
