@@ -1,0 +1,57 @@
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import List, Optional
+
+
+@dataclass
+class User:
+    id: int
+    username: str
+    email: str
+
+
+@dataclass
+class ChatMember:
+    user_id: int
+    chat_id: int
+
+
+class FriendRequestStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
+@dataclass
+class FriendRequest:
+    id: Optional[int]  # Allow None before insert
+    from_user: int
+    to_user: int
+    status: FriendRequestStatus = FriendRequestStatus.PENDING
+
+
+@dataclass
+class Message:
+    id: Optional[int]
+    chat_id: int
+    sender_id: int
+    content: str
+    timestamp: datetime
+
+
+@dataclass
+class Chat:
+    id: Optional[int]
+    created_at: datetime
+    is_group: bool
+    members: List[int] = field(default_factory=list)
+
+    @staticmethod
+    def create_new(members: List[int], is_group: bool = False) -> "Chat":
+        return Chat(
+            id=None,
+            created_at=datetime.now(timezone.utc),
+            is_group=is_group,
+            members=members,
+        )
