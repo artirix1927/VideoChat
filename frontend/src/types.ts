@@ -20,3 +20,26 @@ export type FriendRequest = {
     status: "pending" | "accepted" | "rejected";
 };
 
+
+
+export type Message = {
+    id: number;
+    sender_id: number;
+    content: string;
+    timestamp: string;
+  };
+  
+
+export type ChatMember = {
+    user_id: number
+    user: User
+
+
+}
+
+export type Chat = {
+    id: number;
+    created_at: Date;
+    is_group: boolean;
+    members: ChatMember[];
+}
