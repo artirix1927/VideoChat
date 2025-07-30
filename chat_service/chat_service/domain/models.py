@@ -45,13 +45,27 @@ class Chat:
     id: Optional[int]
     created_at: datetime
     is_group: bool
-    members: List[int] = field(default_factory=list)
+    members: List[ChatMember] = field(default_factory=list)
 
     @staticmethod
-    def create_new(members: List[int], is_group: bool = False) -> "Chat":
+    def create_chat(members: List[ChatMember]) -> "Chat":
         return Chat(
             id=None,
             created_at=datetime.now(timezone.utc),
-            is_group=is_group,
+            is_group=len(members) > 2,
             members=members,
         )
+
+    def to_dict(self, user_map: dict[int, dict]) -> dict:
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat(),
+            "is_group": self.is_group,
+            "members": [
+                {
+                    "user_id": m.user_id,
+                    "user": user_map.get(m.user_id),
+                }
+                for m in self.members
+            ],
+        }
