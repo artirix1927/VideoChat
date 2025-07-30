@@ -12,6 +12,21 @@ from chat_service.application.use_cases.accept_friend_request import (
 from chat_service.application.use_cases.create_friend_request import (
     CreateFriendRequestUseCase,
 )
+from chat_service.application.use_cases.get_chats import GetChats
+from chat_service.application.use_cases.get_messages import (
+    GetMessagesUseCase,
+)
+from chat_service.application.use_cases.get_or_create_chat import (
+    GetOrCreateChatUseCase,
+)
+from chat_service.domain.repositories.chat import ChatRepository
+from chat_service.domain.repositories.message import MessageRepository
+from chat_service.infrastructure.repositories.sqlalchemy_chat import (
+    SQLAlchemyChatRepository,
+)
+from chat_service.infrastructure.repositories.sqlalchemy_message import (
+    SQLAlchemyMessageRepository,
+)
 from chat_service.domain.repositories.friend_request import (
     FriendRequestRepository,
 )
@@ -89,3 +104,46 @@ async def create_friend_request(
     """
 
     return {"friend_request": res}
+
+
+@router.get("/messages")
+async def get_messages(
+    chat_id: int,
+    session: AsyncSession = Depends(get_db),
+):
+
+    message_repo: MessageRepository = SQLAlchemyMessageRepository(session=session)
+
+    get_messages_use_case = GetMessagesUseCase(message_repo=message_repo)
+
+    res = await get_messages_use_case.execute(chat_id=chat_id)
+
+    return {"messages": res}
+
+
+@router.get("/chats")
+async def get_chats(
+    user_id: int,
+    session: AsyncSession = Depends(get_db),
+):
+    chat_repo: ChatRepository = SQLAlchemyChatRepository(session=session)
+
+    get_chats_use_case = GetChats(chat_repo=chat_repo)
+
+    res = await get_chats_use_case.execute(user_id=user_id)
+
+    return {"chats": res}
+
+
+@router.post("/get-or-create-chat")
+async def get_or_create_chat(
+    members: set[int],
+    session: AsyncSession = Depends(get_db),
+):
+    chat_repo: ChatRepository = SQLAlchemyChatRepository(session=session)
+
+    get_chats_use_case = GetOrCreateChatUseCase(chat_repo=chat_repo)
+
+    res = await get_chats_use_case.execute(user_ids=members)
+
+    return {"chat": res}

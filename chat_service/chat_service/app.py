@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 from chat_service.interface.routes import router as chat_router
+from chat_service.interface.ws import router as ws_router
 
 load_dotenv()
 
@@ -29,3 +30,4 @@ app.add_middleware(
 )
 
 app.include_router(chat_router, prefix="/chat")
+app.include_router(ws_router)
