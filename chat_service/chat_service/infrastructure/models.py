@@ -17,9 +17,14 @@ class FriendRequestModel(Base):
     from_user: Mapped[int] = mapped_column(nullable=False)
     to_user: Mapped[int] = mapped_column(nullable=False)  # no ForeignKey (user service)
     status: Mapped[FriendRequestStatus] = mapped_column(
-        SQLEnum(FriendRequestStatus),
+        SQLEnum(
+            FriendRequestStatus,
+            native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
+            name="friendrequeststatus",
+        ),
         nullable=False,
-        default=FriendRequestStatus.PENDING,
+        default=FriendRequestStatus.PENDING.value,
     )
 
     __table_args__ = (UniqueConstraint("from_user", "to_user", name="uq_from_to_user"),)
