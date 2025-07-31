@@ -5,7 +5,7 @@ from uuid import UUID
 AUTH_SERVICE_URL = "http://auth_service:8002"  # or your actual internal URL
 
 
-async def get_users_by_ids(user_ids: List[UUID]) -> List[dict]:
+async def get_users_by_ids(user_ids: List[int]) -> List[dict]:
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{AUTH_SERVICE_URL}/users-by-ids/",
