@@ -18,8 +18,6 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
 
         result = await self.session.execute(stmt)
         friend_requests = result.scalars().all()
-        print(friend_requests)
-        print((await self.session.execute(select(FriendRequestModel))).scalars().all())
         return [friend_request_from_model(req) for req in friend_requests]
 
     async def get_friends_for_user(self, user_id: int) -> list[FriendRequest]:
