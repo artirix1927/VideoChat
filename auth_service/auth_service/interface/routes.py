@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
+from auth_service.infrastructure.db_session import get_db
+from sqlalchemy.orm import Session
+import auth_service.interface.dto as dto_models
 
+from auth_service.infrastructure.messaging.publishers.user_events import (
+    UserEventPublisher,
+)
 
-from auth_service.application.use_cases.delete import DeleteUseCase
-from auth_service.application.use_cases.get_user import GetUserUseCase
-from auth_service.application.use_cases.verify_2fa import Verify2FAUseCase
-from auth_service.application.use_cases.verify_refresh_token import (
-    VerifyRefreshTokenUseCase,
-)
-from auth_service.application.use_cases.get_users_by_ids import (
-    GetUsersByIdsUseCase,
-)
 from auth_service.domain.exceptions import (
     Invalid2FACode,
     InvalidCredentials,
@@ -18,34 +15,31 @@ from auth_service.domain.exceptions import (
     UserNotFound,
 )
 
-from auth_service.domain.repositories.refresh_token import RefreshTokenRepository
-from auth_service.domain.repositories.token_generator import TokenGenerator
-from auth_service.infrastructure.repositories.sqlalchemy_2fa_code import (
-    SQLAlchemyTwoFactorCodeRepository,
+from auth_service.application import (
+    DeleteUseCase,
+    GetUserUseCase,
+    Verify2FAUseCase,
+    VerifyRefreshTokenUseCase,
+    GetUsersByIdsUseCase,
+    LoginUseCase,
+    RegisterUseCase,
 )
 
-from auth_service.infrastructure.messaging.publishers.user_events import (
-    UserEventPublisher,
+from auth_service.domain import (
+    UserRepository,
+    PasswordHasher,
+    TokenGenerator,
+    RefreshTokenRepository,
 )
-from auth_service.infrastructure.repositories.sqlalchemy_refresh_token import (
+
+from auth_service.infrastructure import (
     SQLAlchemyRefreshTokenRepository,
-)
-from auth_service.domain.repositories.password_hasher import PasswordHasher
-from auth_service.domain.repositories.user import UserRepository
-from auth_service.infrastructure.db_session import get_db
-from sqlalchemy.orm import Session
-
-from auth_service.infrastructure.repositories.sqlalchemy_user import (
+    SQLAlchemyTwoFactorCodeRepository,
     SQLAlchemyUserRepository,
+    BcryptPasswordHasher,
+    JWTTokenGenerator,
 )
-from auth_service.infrastructure.services.jwt_token_generator import JWTTokenGenerator
-from auth_service.infrastructure.services.password_hasher import BcryptPasswordHasher
 
-
-from auth_service.application.use_cases.login import LoginUseCase
-from auth_service.application.use_cases.register import RegisterUseCase
-
-import auth_service.interface.dto as dto_models
 
 router = APIRouter()
 
