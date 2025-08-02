@@ -168,14 +168,8 @@ export const ChatComponent = ({ chatId }: ChatProps) => {
 
   return (
     <div className="flex flex-col h-full p-4 gap-2">
-      <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
-        <span className="text-sm">
-          {isConnected ? "Connected" : connectionError || "Connecting..."}
-        </span>
-      </div>
 
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto space-y-2 text-sm">
         {messages.map((msg, index) => (
           <div
             key={msg.id ?? `${index}-${msg.timestamp}`}
@@ -185,7 +179,10 @@ export const ChatComponent = ({ chatId }: ChatProps) => {
           >
             <div>{msg.content}</div>
             <div className="text-xs text-neutral-400 text-right">
-              {new Date(msg.timestamp).toLocaleTimeString()}
+              {new Date(msg.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </div>
           </div>
         ))}
