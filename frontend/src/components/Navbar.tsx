@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/AuthContext";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 
@@ -19,11 +20,18 @@ export const Navbar = () => {
 
         {/* Center */}
         <div className="flex justify-center gap-4">
+            { !user && <>
             <label>Why Us?</label>
             <label>Product</label>
             <label>Solutions</label>
             <label>Resources</label>
             <label>Reviews</label>
+            </>}
+
+            <Link href={"/chat/text"} prefetch >
+                Chats
+            </Link> 
+
         </div>
 
         {/* Right */}

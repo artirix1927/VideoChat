@@ -9,11 +9,10 @@ import { useEffect, useState } from "react";
 type Tab = "friends" | "requests";
 
 
-export const FriendsList = () => {
+export const FriendsList = ({ activeTab }: { activeTab: "friends" | "requests" }) => {
   const { user } = useAuth();
   const [friends, setFriends] = useState<FriendRequest[] | null>(null);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[] | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("friends");
 
   const { mutate: getFriends } = useMutation({
     mutationFn: api.getFriends,
@@ -37,8 +36,7 @@ export const FriendsList = () => {
   const title = activeTab === "friends" ? "Friends" : "Friend Requests";
 
   return (
-    <div className="px-12 py-4 w-100 flex flex-col gap-4 font-mono">
-      <TabSelector active={activeTab} onChange={setActiveTab} />
+    <div className="w-100 flex flex-col gap-4 font-mono">
       <UserList title={title} data={displayedData} />
     </div>
   );
@@ -72,7 +70,7 @@ type UserListProps = {
 
 const UserList = ({ title, data }: UserListProps) => (
   <div className="bg-neutral-900 p-4 rounded-xl">
-    <h2 className="text-xl mb-2">{title}</h2>
+    <h2 className="text-xl mb-4">{title}</h2>
     {data && data.length > 0 ? (
       data.map((friend) => (
         <button className="bg-neutral-800 hover:bg-neutral-700 my-2 
