@@ -35,7 +35,7 @@ export const ChatsList = ({ onSelectChat }: Props) => {
             <button
                 key={chat.id}
                 onClick={() => onSelectChat(chat.id)}
-                className="w-full text-left bg-neutral-800 focus:outline-neutral-700 active:bg-neutral-900 focus:outline-2 focus:outline-offset-2 my-2 p-3 rounded-xl"
+                className="w-3/4 text-left bg-neutral-800 focus:outline-neutral-700 active:bg-neutral-900 focus:outline-2 focus:outline-offset-2 my-2 p-3 rounded-xl"
             >
                 {chat.members
                 .filter((p) => p.user.id !== user.id)
