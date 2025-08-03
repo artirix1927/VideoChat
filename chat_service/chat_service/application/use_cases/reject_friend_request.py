@@ -3,16 +3,10 @@ from chat_service.infrastructure.models import FriendRequestModel
 from chat_service.domain.repositories.friend_request import FriendRequestRepository
 
 
-class CreateFriendRequestUseCase:
+class RejectFriendRequestUseCase:
     def __init__(self, friend_request_repo: FriendRequestRepository):
         self.friend_request_repository = friend_request_repo
 
-    async def execute(
-        self,
-        from_id: int,
-        to_id: int,
-    ):
-        req: FriendRequestModel = await self.friend_request_repository.create(
-            from_id=from_id, to_id=to_id
-        )
+    async def execute(self, req_id: int):
+        req: FriendRequestModel = await self.friend_request_repository.reject(req_id)
         return asdict(req)

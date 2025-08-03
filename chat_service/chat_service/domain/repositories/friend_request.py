@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from chat_service.domain.models import FriendRequest, User
+from chat_service.domain.models import FriendRequest, FriendRequestStatus, User
 
 
 class FriendRequestRepository(ABC):
@@ -14,13 +14,17 @@ class FriendRequestRepository(ABC):
         pass
 
     @abstractmethod
-    async def accept_friend_request(self, request_id: int):
+    async def accept(self, request_id: int) -> FriendRequest:
         pass
 
     @abstractmethod
-    async def create_friend_request(
+    async def create(
         self,
         from_id: int,
         to_id: int,
     ) -> FriendRequest:
+        pass
+
+    @abstractmethod
+    async def reject(self, request_id: int) -> FriendRequest:
         pass
