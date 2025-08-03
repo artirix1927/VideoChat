@@ -1,42 +1,42 @@
-from fastapi import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from chat_service.application.use_cases.get_friends import GetFriendsUseCase
-from chat_service.application.use_cases.get_friend_requests import (
-    GetFriendRequestsUseCase,
-)
-from chat_service.application.use_cases.accept_friend_request import (
-    AcceptFriendRequestUseCase,
-)
-from chat_service.application.use_cases.create_friend_request import (
-    CreateFriendRequestUseCase,
-)
-from chat_service.application.use_cases.get_chats import GetChats
-from chat_service.application.use_cases.get_messages import (
-    GetMessagesUseCase,
-)
-from chat_service.application.use_cases.get_or_create_chat import (
-    GetOrCreateChatUseCase,
-)
-from chat_service.domain.repositories.chat import ChatRepository
-from chat_service.domain.repositories.message import MessageRepository
-from chat_service.infrastructure.repositories.sqlalchemy_chat import (
-    SQLAlchemyChatRepository,
-)
-from chat_service.infrastructure.repositories.sqlalchemy_message import (
-    SQLAlchemyMessageRepository,
-)
-from chat_service.domain.repositories.friend_request import (
-    FriendRequestRepository,
-)
-from chat_service.infrastructure.repositories.sqlalchemy_friend_request import (
-    SQLAlchemyFriendRequestRepository,
-)
 from chat_service.infrastructure.db_session import get_db
 
+from chat_service.domain import (
+    ChatRepository,
+    FriendRequestRepository,
+    MessageRepository,
+)
+
+from chat_service.infrastructure import (
+    SQLAlchemyChatRepository,
+    SQLAlchemyFriendRequestRepository,
+    SQLAlchemyMessageRepository,
+)
+
+from chat_service.application import (
+    GetFriendsUseCase,
+    GetFriendRequestsUseCase,
+    AcceptFriendRequestUseCase,
+    RejectFriendRequestUseCase,
+    CreateFriendRequestUseCase,
+    GetChats,
+    GetMessagesUseCase,
+    GetOrCreateChatUseCase,
+)
+
+
+"""TODO:
+    1. Add auto accept on mutual requests
+"""
 
 router = APIRouter()
+
+
+class FriendRequestInput(BaseModel):
+    request_id: int
 
 
 @router.get("/friend-requests")
@@ -71,7 +71,7 @@ async def get_friends(
 
 @router.post("/accept-friend-request")
 async def accept_friend_request(
-    request_id: int,
+    body: FriendRequestInput,
     session: AsyncSession = Depends(get_db),
 ):
     friend_req_repo: FriendRequestRepository = SQLAlchemyFriendRequestRepository(
@@ -80,7 +80,23 @@ async def accept_friend_request(
     accept_request_use_case = AcceptFriendRequestUseCase(
         friend_request_repo=friend_req_repo
     )
-    res = await accept_request_use_case.execute(request_id)
+    res = await accept_request_use_case.execute(body.request_id)
+
+    return {"friend_request": res}
+
+
+@router.post("/reject-friend-request")
+async def reject_friend_request(
+    body: FriendRequestInput,
+    session: AsyncSession = Depends(get_db),
+):
+    friend_req_repo: FriendRequestRepository = SQLAlchemyFriendRequestRepository(
+        session=session
+    )
+    reject_request_use_case = RejectFriendRequestUseCase(
+        friend_request_repo=friend_req_repo
+    )
+    res = await reject_request_use_case.execute(body.request_id)
 
     return {"friend_request": res}
 
@@ -98,10 +114,6 @@ async def create_friend_request(
         friend_request_repo=friend_req_repo
     )
     res = await accept_request_use_case.execute(from_id=from_id, to_id=to_id)
-
-    """TODO:
-        1. Add auto accept on mutual requests
-    """
 
     return {"friend_request": res}
 

@@ -1,0 +1,3 @@
+from .repositories.sqlalchemy_chat import SQLAlchemyChatRepository
+from .repositories.sqlalchemy_friend_request import SQLAlchemyFriendRequestRepository
+from .repositories.sqlalchemy_message import SQLAlchemyMessageRepository
