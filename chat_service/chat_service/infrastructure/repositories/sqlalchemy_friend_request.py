@@ -62,3 +62,26 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
         self.session.add(req)
         await self.session.commit()
         return friend_request_from_model(req)
+
+    async def auto_accept_if_mutual(self, request_id: int) -> FriendRequest:
+        req = await self.session.get(FriendRequestModel, request_id)
+
+        to_user = req.to_user
+
+        stmt = select(FriendRequestModel).filter_by(
+            from_user=to_user, status=FriendRequestStatus.PENDING.value
+        )
+        result = await self.session.execute(stmt)
+        friend_request: FriendRequest | None = result.scalar_one_or_none()
+
+        if not friend_request:
+            return
+
+        friend_request.status = FriendRequestStatus.ACCEPTED.value
+        req.status = FriendRequestStatus.ACCEPTED.value
+
+        self.session.add_all((friend_request, req))
+
+        await self.session.commit()
+
+        return friend_request_from_model(req)

@@ -28,3 +28,7 @@ class FriendRequestRepository(ABC):
     @abstractmethod
     async def reject(self, request_id: int) -> FriendRequest:
         pass
+
+    @abstractmethod
+    async def auto_accept_if_mutual(self, request_id: int) -> FriendRequest:
+        pass

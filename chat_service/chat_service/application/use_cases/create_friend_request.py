@@ -15,4 +15,9 @@ class CreateFriendRequestUseCase:
         req: FriendRequestModel = await self.friend_request_repository.create(
             from_id=from_id, to_id=to_id
         )
+
+        req = await self.friend_request_repository.auto_accept_if_mutual(
+            request_id=req.id
+        )
+
         return asdict(req)
