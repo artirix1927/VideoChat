@@ -28,19 +28,16 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
         friend_requests = result.scalars().all()
         return [friend_request_from_model(req) for req in friend_requests]
 
-    async def accept_friend_request(self, request_id: int) -> FriendRequest:
-        req = await self.session.get(FriendRequestModel, request_id)
+    async def accept(self, request_id: int) -> FriendRequest:
+        return await self.change_status(
+            request_id=request_id, status=FriendRequestStatus.ACCEPTED
+        )
 
-        req.status = FriendRequestStatus.ACCEPTED.value
-        self.session.add(req)
-        await self.session.commit()
-        return friend_request_from_model(req)
-
-    async def create_friend_request(
+    async def create(
         self,
         from_id: int,
         to_id: int,
-    ):
+    ) -> FriendRequest:
         model = FriendRequestModel(
             from_user=from_id, to_user=to_id, status=FriendRequestStatus.PENDING.value
         )
@@ -49,3 +46,19 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
         await self.session.commit()
         await self.session.refresh(model)
         return friend_request_from_model(model)
+
+    async def reject(self, request_id: int):
+
+        return await self.change_status(
+            request_id=request_id, status=FriendRequestStatus.REJECTED
+        )
+
+    async def change_status(
+        self, request_id: int, status: FriendRequestStatus
+    ) -> FriendRequest:
+        req = await self.session.get(FriendRequestModel, request_id)
+
+        req.status = status.value
+        self.session.add(req)
+        await self.session.commit()
+        return friend_request_from_model(req)

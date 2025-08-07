@@ -45,6 +45,19 @@ export const api = {
             `/chat/chats/?user_id=${data.user_id}`,
             { method: "GET" }
         ),    
+        
+    rejectFriendRequest: (data: { request_id: number}) =>
+        chatFetcher<{ friend_request: FriendRequest }>("/chat/reject-friend-request", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),  
+            
+    acceptFriendRequest: (data: { request_id: number}) =>
+        chatFetcher<{ friend_request: FriendRequest }>("/chat/accept-friend-request", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
     
 
 };
