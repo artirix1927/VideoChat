@@ -17,9 +17,9 @@ services:
     depends_on:
       - rabbitmq
     volumes:
-      - ./auth_service/auth_service/db.sqlite3:/app/auth_service/db.sqlite3
+      - ./auth_service/db.sqlite3:/app/db.sqlite3
     environment:
-      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/auth_service/db.sqlite3
+      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/db.sqlite3
     
   chat_service:
     build: ./chat_service
@@ -31,10 +31,9 @@ services:
       - rabbitmq
     volumes:
       - ./chat_service:/app
-      - ./chat_service/chat_service/db.sqlite3:/app/chat_service/db.sqlite3
-
+      - ./chat_service/db.sqlite3:/app/db.sqlite3
     environment:
-      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/chat_service/db.sqlite3
+      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/db.sqlite3
    
 
 
@@ -42,12 +41,12 @@ services:
   two_factor_consumer:
     build: ./auth_service
     container_name: two_factor_consumer
-    command: ["python", "auth_service/infrastructure/messaging/consumers/two_factor.py"]
+    command: ["python", "-m", "infrastructure.messaging.consumers.two_factor"]
     depends_on:
       - rabbitmq
     restart: unless-stopped
     environment:
-      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/auth_service/db.sqlite3
+      - SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:////app/db.sqlite3
 
   signaling_service:
     build: ./signaling_service
