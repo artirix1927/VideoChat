@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,7 +66,6 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
 
     async def auto_accept_if_mutual(self, request_id: int) -> FriendRequest:
         req = await self.session.get(FriendRequestModel, request_id)
-
         to_user = req.to_user
 
         stmt = select(FriendRequestModel).filter_by(
@@ -75,7 +75,7 @@ class SQLAlchemyFriendRequestRepository(FriendRequestRepository):
         friend_request: FriendRequest | None = result.scalar_one_or_none()
 
         if not friend_request:
-            return
+            return friend_request_from_model(req)
 
         friend_request.status = FriendRequestStatus.ACCEPTED.value
         req.status = FriendRequestStatus.ACCEPTED.value
