@@ -4,7 +4,9 @@ import { RegisterForm } from "@/components/Register";
 export default function Register() {
   return <>
     <Navbar></Navbar>
-    <RegisterForm></RegisterForm>
+    <div>
+      <RegisterForm></RegisterForm>
+    </div>
     </>
     
 }

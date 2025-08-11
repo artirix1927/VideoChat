@@ -4,7 +4,11 @@ import { Navbar } from "@/components/Navbar";
 export default function Register() {
   return <>
     <Navbar></Navbar>
-    <LoginForm></LoginForm>
+
+    <div>
+      <LoginForm></LoginForm>
+    </div>
+    
     </>
     
 }
