@@ -8,20 +8,23 @@ const STUN_SERVERS = [
   { urls: 'stun:stun2.l.google.com:19302' }
 ]
 
+
 export default function VoiceChat() {
   const [callId, setCallId] = useState('')
-  const {user} = useAuth()
+  const { user } = useAuth()
   const [status, setStatus] = useState('Disconnected')
   const [peers, setPeers] = useState<number[]>([])
 
   const localStream = useRef<MediaStream | null>(null)
-  const pcs = useRef<Record<number, RTCPeerConnection>>({})
+  const pcs = useRef<Record<number, {
+    pc: RTCPeerConnection
+    pendingCandidates: RTCIceCandidateInit[]
+  }>>({})
   const audios = useRef<Record<number, HTMLAudioElement>>({})
   const ws = useRef<WebSocket | null>(null)
-
-
+  
   const cleanup = () => {
-    log("Cleaning up...")
+    console.log("Cleaning up...")
     Object.keys(pcs.current).forEach(id => cleanupPeer(+id))
     localStream.current?.getTracks().forEach(t => t.stop())
     localStream.current = null
@@ -31,13 +34,10 @@ export default function VoiceChat() {
     setStatus("Disconnected")
   }
 
-
   useEffect(() => cleanup, [])
 
-  if (!user ) return
+  if (!user) return null
 
-  
-  
   const log = (msg: string) => {
     console.log(msg)
     setStatus(s => `${s}\n${msg}`)
@@ -45,27 +45,34 @@ export default function VoiceChat() {
 
   const cleanupPeer = (id: number) => {
     log(`Cleaning peer ${id}`)
-    pcs.current[id]?.close()
+    pcs.current[id]?.pc.close()
     delete pcs.current[id]
     audios.current[id]?.remove()
     delete audios.current[id]
     setPeers(p => p.filter(pid => pid !== id))
   }
 
-
-
   const createPeer = (peerId: number) => {
-    if (pcs.current[peerId]) return pcs.current[peerId]
+    if (pcs.current[peerId]) return pcs.current[peerId].pc
 
     const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS })
-
+    const pendingCandidates: RTCIceCandidateInit[] = []
+    
     if (localStream.current) {
-      localStream.current.getTracks().forEach(track => pc.addTrack(track, localStream.current!))
+      localStream.current.getTracks().forEach(track => {
+        pc.addTrack(track, localStream.current!)
+      })
     }
 
     pc.onicecandidate = e => {
       if (e.candidate) {
-        ws.current?.send(JSON.stringify({ type: 'ice-candidate', candidate: e.candidate, target: peerId, from: user.id }))
+        log(`Sending ICE candidate to ${peerId}`)
+        ws.current?.send(JSON.stringify({ 
+          type: 'ice-candidate', 
+          candidate: e.candidate.toJSON(), 
+          target: peerId, 
+          from: user.id 
+        }))
       }
     }
 
@@ -77,43 +84,116 @@ export default function VoiceChat() {
         audio.controls = true
         document.body.appendChild(audio)
         audios.current[peerId] = audio
+        log(`Created audio element for peer ${peerId}`)
       }
       audios.current[peerId].srcObject = stream
+      log(`Received remote stream from ${peerId}`)
     }
 
     pc.onconnectionstatechange = () => {
-      if (['failed', 'disconnected'].includes(pc.connectionState)) cleanupPeer(peerId)
+      log(`Peer ${peerId} connection state: ${pc.connectionState}`)
+      if (['failed', 'disconnected'].includes(pc.connectionState)) {
+        cleanupPeer(peerId)
+      }
     }
 
-    pcs.current[peerId] = pc
+    pcs.current[peerId] = { pc, pendingCandidates }
     return pc
   }
 
   const handleOffer = async (from: number, sdp: string) => {
-    const pc = createPeer(from)
-    await pc.setRemoteDescription({ type: 'offer', sdp })
-    const answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
-    ws.current?.send(JSON.stringify({ type: 'answer', sdp: answer.sdp, target: from, from: user }))
+    log(`Received offer from ${from}`)
+    const { pc, pendingCandidates } = pcs.current[from] || { 
+      pc: createPeer(from), 
+      pendingCandidates: [] 
+    }
+    
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }))
+      log(`Set remote description for ${from}`)
+      
+      // Process any pending ICE candidates
+      while (pendingCandidates.length > 0) {
+        const candidate = pendingCandidates.shift()!
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+        log(`Processed pending ICE candidate for ${from}`)
+      }
+      
+      const answer = await pc.createAnswer()
+      await pc.setLocalDescription(answer)
+      log(`Created answer for ${from}`)
+      
+      ws.current?.send(JSON.stringify({ 
+        type: 'answer', 
+        sdp: answer.sdp, 
+        target: from, 
+        from: user.id 
+      }))
+    } catch (err) {
+      log(`Error handling offer: ${err}`)
+    }
   }
 
   const handleAnswer = async (from: number, sdp: string) => {
-    const pc = pcs.current[from]
-    if (!pc) return
-    await pc.setRemoteDescription({ type: 'answer', sdp })
+    log(`Received answer from ${from}`)
+    const { pc, pendingCandidates } = pcs.current[from] || { 
+      pc: createPeer(from), 
+      pendingCandidates: [] 
+    }
+    
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }))
+      log(`Set remote description (answer) for ${from}`)
+      
+      // Process any pending ICE candidates
+      while (pendingCandidates.length > 0) {
+        const candidate = pendingCandidates.shift()!
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+        log(`Processed pending ICE candidate for ${from}`)
+      }
+    } catch (err) {
+      log(`Error handling answer: ${err}`)
+    }
   }
 
   const handleIce = async (from: number, candidate: RTCIceCandidateInit) => {
-    const pc = pcs.current[from]
-    if (!pc) return
-    await pc.addIceCandidate(new RTCIceCandidate(candidate))
+    log(`Received ICE candidate from ${from}`)
+    const peerData = pcs.current[from] || { 
+      pc: createPeer(from), 
+      pendingCandidates: [] 
+    }
+    
+    try {
+      if (peerData.pc.remoteDescription) {
+        await peerData.pc.addIceCandidate(new RTCIceCandidate(candidate))
+        log(`Added ICE candidate for ${from}`)
+      } else {
+        peerData.pendingCandidates.push(candidate)
+        log(`Queued ICE candidate for ${from} (waiting for remote description)`)
+      }
+    } catch (err) {
+      log(`Error adding ICE candidate: ${err}`)
+    }
   }
 
   const initiateCall = async (peerId: number) => {
+    log(`Initiating call with ${peerId}`)
     const pc = createPeer(peerId)
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
-    ws.current?.send(JSON.stringify({ type: 'offer', sdp: offer.sdp, target: peerId, from: user.id }))
+    
+    try {
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      log(`Created offer for ${peerId}`)
+      
+      ws.current?.send(JSON.stringify({ 
+        type: 'offer', 
+        sdp: offer.sdp, 
+        target: peerId, 
+        from: user.id 
+      }))
+    } catch (err) {
+      log(`Error creating offer: ${err}`)
+    }
   }
 
   const initConnection = async () => {
@@ -122,11 +202,28 @@ export default function VoiceChat() {
     setStatus("Connecting...")
 
     try {
-      localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Get user media
+      localStream.current = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+      log("Got local media stream")
+      
+      // Create self-monitoring audio
+      const localAudio = document.createElement('audio')
+      localAudio.srcObject = localStream.current
+      localAudio.controls = true
+      document.body.appendChild(localAudio)
+      log("Created local audio element")
+
+      // Connect to signaling server
       ws.current = new WebSocket(`ws://localhost:8000/ws/signaling/${callId}/${user.id}`)
 
       ws.current.onopen = () => {
-        log("Connected to signaling")
+        log("Connected to signaling server")
         ws.current?.send(JSON.stringify({
           type: 'join-call',
           userId: user.id,
@@ -134,26 +231,40 @@ export default function VoiceChat() {
         }))
       }
 
-      ws.current.onclose = cleanup
-      ws.current.onerror = e => log(`WebSocket error: ${e}`)
-      ws.current.onmessage = async e => {
-        const msg = JSON.parse(e.data)
-        if (msg.from === user.id && msg.from !== 'system') return
-        switch (msg.type) {
-          case 'new-peer':
-            if (!pcs.current[msg.peerId]) {
-              setPeers(p => p.includes(msg.peerId) ? p : [...p, msg.peerId])
-              setTimeout(() => initiateCall(msg.peerId), 500)
-            }
-            break
-          case 'offer': await handleOffer(msg.from, msg.sdp); break
-          case 'answer': await handleAnswer(msg.from, msg.sdp); break
-          case 'ice-candidate': await handleIce(msg.from, msg.candidate); break
-          case 'peer-disconnected': cleanupPeer(msg.peerId); break
+      ws.current.onclose = () => {
+        log("Disconnected from signaling server")
+        cleanup()
+      }
+
+      ws.current.onerror = (e) => {
+        log(`WebSocket error: ${e}`)
+      }
+
+      ws.current.onmessage = async (e) => {
+        try {
+          const msg = JSON.parse(e.data)
+          if (msg.from === user.id) return // Skip messages from self
+          
+          log(`Received message type: ${msg.type}`)
+          switch (msg.type) {
+            case 'new-peer':
+              if (!pcs.current[msg.peerId]) {
+                setPeers(p => [...p, msg.peerId])
+                setTimeout(() => initiateCall(msg.peerId), 500) // Small delay to ensure peer is ready
+              }
+              break
+            case 'offer': await handleOffer(msg.from, msg.sdp); break
+            case 'answer': await handleAnswer(msg.from, msg.sdp); break
+            case 'ice-candidate': await handleIce(msg.from, msg.candidate); break
+            case 'peer-disconnected': cleanupPeer(msg.peerId); break
+            default: log(`Unknown message type: ${msg.type}`)
+          }
+        } catch (err) {
+          log(`Error handling message: ${err}`)
         }
       }
-    } catch (e) {
-      log(`Init error: ${e}`)
+    } catch (err) {
+      log(`Initialization error: ${err}`)
       cleanup()
     }
   }
