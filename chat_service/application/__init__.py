@@ -6,3 +6,4 @@ from .use_cases.create_friend_request import CreateFriendRequestUseCase
 from .use_cases.get_chats import GetChats
 from .use_cases.get_messages import GetMessagesUseCase
 from .use_cases.get_or_create_chat import GetOrCreateChatUseCase
+from .use_cases.send_message import SendMessageUseCase
