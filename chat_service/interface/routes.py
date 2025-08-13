@@ -1,3 +1,4 @@
+from typing import Set
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,15 +29,15 @@ from application import (
 )
 
 
-"""TODO:
-    1. Add auto accept on mutual requests
-"""
-
 router = APIRouter()
 
 
 class FriendRequestInput(BaseModel):
     request_id: int
+
+
+class MembersInput(BaseModel):
+    members: Set[int]
 
 
 @router.get("/friend-requests")
@@ -149,13 +150,13 @@ async def get_chats(
 
 @router.post("/get-or-create-chat")
 async def get_or_create_chat(
-    members: set[int],
+    body: MembersInput,
     session: AsyncSession = Depends(get_db),
 ):
     chat_repo: ChatRepository = SQLAlchemyChatRepository(session=session)
 
     get_chats_use_case = GetOrCreateChatUseCase(chat_repo=chat_repo)
 
-    res = await get_chats_use_case.execute(user_ids=members)
+    res = await get_chats_use_case.execute(user_ids=body.members)
 
     return {"chat": res}
