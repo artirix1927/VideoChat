@@ -58,6 +58,12 @@ export const api = {
             body: JSON.stringify(data),
         }),
 
+    getOrCreateChat: (data: { members: number[]}) =>
+        chatFetcher<{ chat: Chat }>("/chat/get-or-create-chat", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
     
 
 };

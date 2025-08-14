@@ -8,7 +8,7 @@ import { ChatsList } from "@/components/ChatList";
 import { FriendsList } from "@/components/FriendsList";
 import { Navbar } from "@/components/Navbar";
 
-type ActivePanel = "chats" | "friends" | "requests";
+export type ActivePanel = "chats" | "friends" | "requests";
 
 export default function ChatPage() {
   const [activePanel, setActivePanel] = useState<ActivePanel>("chats");
@@ -45,9 +45,9 @@ export default function ChatPage() {
         {/* Panel */}
         <div className="flex-1 overflow-y-auto">
           {activePanel === "chats" ? (
-            <ChatsList onSelectChat={(id) => setActiveChatId(id)} />
+            <ChatsList onSelectChat={(id) => setActiveChatId(id)} selectedChat={activeChatId} />
           ) : (
-            <FriendsList activeTab={activePanel} />
+            <FriendsList activeTab={activePanel} setSelectedChat={setActiveChatId} setActivePanel={setActivePanel}/>
           )}
         </div>
       </div>
