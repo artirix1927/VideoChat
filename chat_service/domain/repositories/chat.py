@@ -5,7 +5,7 @@ from domain.models import Chat
 
 class ChatRepository(ABC):
     @abstractmethod
-    async def create_chat(self, members: set[int]) -> Chat:
+    async def create_chat(self, chat: Chat) -> Chat:
         pass
 
     @abstractmethod

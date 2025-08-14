@@ -11,7 +11,13 @@ class GetOrCreateChatUseCase:
     async def execute(self, user_ids: Set[int]) -> Chat:
         existing = await self.chat_repo.get_chat_by_members(user_ids)
 
-        chat_to_return = existing if existing else Chat.create_chat(members=user_ids)
+        chat_domain_model = Chat.create_chat(members=user_ids)
+
+        chat_to_return = (
+            existing
+            if existing
+            else await self.chat_repo.create_chat(chat_domain_model)
+        )
 
         all_member_ids = [m.user_id for m in chat_to_return.members]
         user_map = await enrich_users(all_member_ids)
