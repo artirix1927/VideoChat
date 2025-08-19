@@ -24,6 +24,12 @@ export const ChatsList = ({ onSelectChat, selectedChat }: Props) => {
     });
   }, [user]);
 
+
+  const handleStartCall = (chatId: number) => {
+    window.open(`/video/call/${chatId}`, "_blank", "noopener,noreferrer");
+  };
+
+
   if (!user) return null;
 
   return (
@@ -33,25 +39,37 @@ export const ChatsList = ({ onSelectChat, selectedChat }: Props) => {
         chats.map((chat) => {
           const isSelected = chat.id === selectedChat;
           return (
-            <button
+            <div
               key={chat.id}
               onClick={() => onSelectChat(chat.id)}
               className={`w-3/4 text-left my-2 p-3 rounded-xl bg-neutral-800 
-                hover:bg-neutral-700 transition-all`}
+                hover:bg-neutral-700 transition-all flex items-center`}
               style={
                 isSelected
                   ? {
-                      outline: "2px solid #525252", // same gray you had
+                      outline: "2px solid #525252",
                       outlineOffset: "2px",
                     }
                   : {}
               }
             >
-              {chat.members
-                .filter((p) => p.user.id !== user.id)
-                .map((p) => p.user.username)
-                .join(", ")}
-            </button>
+              <span>
+                {chat.members
+                  .filter((p) => p.user.id !== user.id)
+                  .map((p) => p.user.username)
+                  .join(", ")}
+              </span>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent triggering chat select
+                  handleStartCall(chat.id);
+                }}
+                className="ml-auto bg-neutral-700 hover:bg-neutral-600 px-3 py-1 rounded-lg"
+              >
+                Call
+              </button>
+            </div>
           );
         })
       ) : (
