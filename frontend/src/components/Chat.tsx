@@ -191,7 +191,7 @@ export const ChatComponent = ({ chatId }: ChatProps) => {
 
       <div className="flex gap-2">
         <input
-          className="flex-1 px-4 py-2 rounded-lg bg-neutral-800 text-white"
+          className="flex-1 px-4 py-2 rounded-lg bg-neutral-700 text-white"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
