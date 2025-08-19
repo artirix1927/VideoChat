@@ -30,6 +30,14 @@ class FriendRequest:
     to_user: int
     status: FriendRequestStatus = FriendRequestStatus.PENDING
 
+    def to_dict(self, user_map: dict[int, dict]) -> dict:
+        return {
+            "id": self.id,
+            "from_user": user_map.get(self.from_user),
+            "to_user": user_map.get(self.to_user),
+            "status": self.status,
+        }
+
 
 @dataclass
 class Message:

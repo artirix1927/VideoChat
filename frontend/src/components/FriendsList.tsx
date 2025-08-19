@@ -49,6 +49,9 @@ export const FriendsList = ({ activeTab, setSelectedChat, setActivePanel }: Frie
     setActivePanel("chats");
   }
 
+  console.log(friends)
+  console.log(friendRequests)
+
   if (!user) return null;
 
   const displayedData = activeTab === "friends" ? friends : friendRequests;
