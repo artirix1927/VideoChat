@@ -1,130 +1,124 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from connection_manager import CallConnectionManager
+# signaling.py (or whatever module where you register router)
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Dict, Any
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from connection_manager import CallConnectionManager
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 manager = CallConnectionManager()
-logger = logging.getLogger(__name__)
 
 
 @router.websocket("/ws/signaling/{call_id}/{user_id}")
 async def signaling_ws(websocket: WebSocket, call_id: str, user_id: int):
-    # Validate parameters
+    logger.info(f"incoming ws {call_id=} {user_id=}")
+
+    # quick validation (FastAPI already casts path param types)
     if not call_id or not isinstance(user_id, int):
-        logger.error(f"Invalid connection parameters: {call_id}/{user_id}")
-        await websocket.close(code=1003)  # Invalid Data
+        logger.error(f"invalid params: {call_id}/{user_id}")
+        await websocket.close(code=1003)
         return
 
-    # Get existing peers before connecting
-    existing_peers = list(manager.get_peers(call_id).keys())
-    logger.info(f"Existing peers in call {call_id}: {existing_peers}")
-
-    # Connect to the call
+    # 1) Register connection (accept happens inside manager.connect)
     if not await manager.connect(call_id, user_id, websocket):
-        await websocket.close(code=1008)  # Policy Violation
+        logger.warning(f"connect refused for {user_id}@{call_id}")
+        await websocket.close(code=1008)
         return
+
+    # 2) Send the new client the current peer-list (exclude itself)
+    try:
+        peers_snapshot = list(
+            (await manager.get_peers(call_id, exclude_user=user_id)).keys()
+        )
+        await websocket.send_json(
+            {"type": "peer-list", "peers": peers_snapshot, "from": "system"}
+        )
+    except Exception as e:
+        logger.exception(f"failed to send peer-list to {user_id}@{call_id}: {e}")
+
+    # 3) Notify other peers about the newcomer (they will initiate offers to the newcomer)
+    try:
+        await manager.broadcast(
+            call_id,
+            {"type": "new-peer", "peerId": user_id, "from": "system"},
+            exclude_user=user_id,
+        )
+    except Exception as e:
+        logger.exception(f"failed to broadcast new-peer for {user_id}@{call_id}: {e}")
+
+    # 4) Start heartbeat task for this call (optional)
+    async def heartbeat_task():
+        try:
+            while True:
+                await asyncio.sleep(30)
+                try:
+                    disconnected = await manager.cleanup_stale_connections(call_id)
+                    if disconnected:
+                        logger.info(
+                            f"cleaned {disconnected} stale connections in {call_id}"
+                        )
+                except Exception:
+                    logger.exception("cleanup_stale_connections error")
+        except asyncio.CancelledError:
+            return
+
+    hb = asyncio.create_task(heartbeat_task())
 
     try:
-        # Notify existing peers about new peer
-        if existing_peers:
-            await manager.broadcast(
-                call_id,
-                {"type": "new-peer", "peerId": user_id, "from": "system"},
-                exclude_user=user_id,
-            )
-            logger.info(
-                f"Notified {len(existing_peers)} existing peers about user {user_id}"
-            )
-
-        # Notify new peer about existing peers
-        for peer_id in existing_peers:
-            try:
-                await websocket.send_json(
-                    {"type": "new-peer", "peerId": peer_id, "from": "system"}
-                )
-                logger.info(
-                    f"Notified new user {user_id} about existing peer {peer_id}"
-                )
-            except Exception as e:
-                logger.error(f"Failed to notify new user about peer {peer_id}: {e}")
-
         while True:
             try:
-                # Receive with timeout
-                data = await asyncio.wait_for(websocket.receive_json(), timeout=30.0)
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=60.0)
 
-                # Handle ping/pong
+                # heartbeat messages
                 if data.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
                     continue
-                elif data.get("type") == "pong":
+                if data.get("type") == "pong":
                     continue
 
-                # Validate message structure
                 if not isinstance(data, dict):
-                    await websocket.send_json(
-                        {
-                            "error": "Invalid message format",
-                            "hint": "Must be JSON object",
-                        }
-                    )
+                    await websocket.send_json({"error": "invalid message format"})
                     continue
 
-                # Add sender info if not present
                 if "from" not in data:
                     data["from"] = user_id
 
-                logger.info(
-                    f"Broadcasting {data.get('type')} from {user_id} to call {call_id}"
-                )
-
-                # Broadcast to specific target or all peers
                 target = data.get("target")
-                if target:
-                    # Send to specific peer
-                    await manager.send_to_peer(call_id, target, data)
-                    logger.info(f"Sent {data.get('type')} from {user_id} to {target}")
+                if target is not None:
+                    # forward to specific peer
+                    await manager.send_to_peer(call_id, int(target), data)
                 else:
-                    # Broadcast to all peers
-                    sent_count = await manager.broadcast(
-                        call_id, data, exclude_user=user_id
-                    )
-                    logger.info(
-                        f"Broadcasted {data.get('type')} from {user_id} to {sent_count} peers"
-                    )
+                    # broadcast to all others
+                    await manager.broadcast(call_id, data, exclude_user=user_id)
 
             except asyncio.TimeoutError:
-                # Send ping to check connection
+                # try ping; if send fails, break to cleanup
                 try:
                     await websocket.send_json({"type": "ping"})
-                except:
-                    break  # Connection is dead
-
-            except json.JSONDecodeError:
-                await websocket.send_json({"error": "Invalid JSON"})
-                continue
-
+                except Exception:
+                    break
             except WebSocketDisconnect:
-                break  # Normal disconnect
-
-            except Exception as e:
-                logger.error(f"Unexpected error: {str(e)}")
+                logger.info(f"WebSocketDisconnect for {user_id}@{call_id}")
                 break
-
-    except Exception as e:
-        logger.error(f"Connection error: {str(e)}")
+            except json.JSONDecodeError:
+                await websocket.send_json({"error": "invalid json"})
+            except Exception as e:
+                logger.exception(
+                    f"unexpected error in signaling loop for {user_id}@{call_id}: {e}"
+                )
+                break
     finally:
+        hb.cancel()
+        # notify others and remove socket from registry
         try:
-            # Notify other peers about disconnection
             await manager.broadcast(
                 call_id,
                 {"type": "peer-disconnected", "peerId": user_id, "from": "system"},
                 exclude_user=user_id,
             )
-            await manager.safe_disconnect(call_id, user_id)
-            logger.info(f"User {user_id} disconnected from call {call_id}")
-        except Exception as e:
-            logger.error(f"Cleanup error: {str(e)}")
+        except Exception:
+            logger.exception("broadcast peer-disconnected failed")
+        await manager.disconnect(call_id, user_id)
+        logger.info(f"cleanup complete for {user_id}@{call_id}")
