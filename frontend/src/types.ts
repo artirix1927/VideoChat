@@ -43,3 +43,20 @@ export type Chat = {
     is_group: boolean;
     members: ChatMember[];
 }
+
+
+export type SignalMessage =
+| { type: 'join-call'; userId: number; from: number }
+| { type: 'new-peer'; peerId: number; from: number }
+| { type: 'peer-list'; peers: number[]; from: number }
+| { type: 'offer'; sdp: string; target: number; from: number }
+| { type: 'answer'; sdp: string; target: number; from: number }
+| { type: 'ice-candidate'; candidate: RTCIceCandidateInit; target: number; from: number }
+| { type: 'peer-disconnected'; peerId: number; from: number }
+| { type: 'ping' }
+| { type: 'pong' }
+  
+export type RemotePeer = {
+    id: number
+    stream: MediaStream
+}
