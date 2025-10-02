@@ -70,12 +70,13 @@ async def signaling_ws(websocket: WebSocket, call_id: str, user_id: int):
         while True:
             try:
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=60.0)
+                message_type = data.get("type")
 
                 # heartbeat messages
-                if data.get("type") == "ping":
+                if message_type == "ping":
                     await websocket.send_json({"type": "pong"})
                     continue
-                if data.get("type") == "pong":
+                if message_type == "pong":
                     continue
 
                 if not isinstance(data, dict):
@@ -84,6 +85,38 @@ async def signaling_ws(websocket: WebSocket, call_id: str, user_id: int):
 
                 if "from" not in data:
                     data["from"] = user_id
+
+                if message_type == "call-invite":
+                    cid = data["callId"]
+                    from_user = data["from"]
+                    await manager.broadcast(
+                        cid,
+                        {"type": "call-invite", "callId": cid, "from": from_user},
+                        exclude_user=from_user,
+                    )
+                    continue
+
+                elif message_type == "call-accept":
+                    cid = data["callId"]
+                    from_user = data["from"]
+                    await manager.broadcast(
+                        cid,
+                        {
+                            "type": "call-accept",
+                            "callId": cid,
+                            "from": from_user,
+                        },
+                    )
+                    continue
+
+                elif message_type == "call-decline":
+                    cid = data["callId"]
+                    from_user = data["from"]
+                    await manager.broadcast(
+                        cid,
+                        {"type": "call-decline", "callId": cid, "from": from_user},
+                    )
+                    continue
 
                 target = data.get("target")
                 if target is not None:

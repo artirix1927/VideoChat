@@ -46,17 +46,33 @@ export type Chat = {
 
 
 export type SignalMessage =
-| { type: 'join-call'; userId: number; from: number }
-| { type: 'new-peer'; peerId: number; from: number }
-| { type: 'peer-list'; peers: number[]; from: number }
-| { type: 'offer'; sdp: string; target: number; from: number }
-| { type: 'answer'; sdp: string; target: number; from: number }
-| { type: 'ice-candidate'; candidate: RTCIceCandidateInit; target: number; from: number }
-| { type: 'peer-disconnected'; peerId: number; from: number }
-| { type: 'ping' }
-| { type: 'pong' }
+  | { type: 'join-call'; userId: number; from:
+    number, userData?: { userId: number;username?: string;}}
+  | { type: 'new-peer'; peerId: number; from: number, userData?: {userId: number;username?: string;} }
+  | { type: 'peer-list'; peers: number[]; from: number }
+  | { type: 'offer'; sdp: string; target: number; from: number, userData: User}
+  | { type: 'answer'; sdp: string; target: number; from: number, userData?: {userId: number; username?: string}}
+  | { type: 'ice-candidate'; candidate: RTCIceCandidateInit; 
+   target: number; from: number,  userData?: {userId: number;username?: string;}}
+  | { type: 'peer-disconnected'; peerId: number; from: number }
+  | { type: 'call-invite'; callId: string; from: number }
+  | { type: 'call-accept'; callId: string; from: number }  
+  | { type: 'call-decline'; callId: string; from: number }  
+  | { type: 'ping' }
+  | { type: 'pong' }
   
 export type RemotePeer = {
     id: number
     stream: MediaStream
+    userData?: {
+        userId: number;
+        username?: string;
+    };
 }
+export type RemoteStream  = {
+    stream: MediaStream;
+    userData?: {
+      userId: number;
+      username?: string;
+    };
+  }

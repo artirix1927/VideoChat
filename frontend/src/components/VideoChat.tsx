@@ -10,39 +10,32 @@ function Tile({
   title,
   stream,
   isLocal,
-  setAutoplayBlocked,
-}: { title: string; stream: MediaStream | null; isLocal?: boolean; setAutoplayBlocked: (v: boolean) => void }) {
+}: { title: string; stream: MediaStream | null; isLocal?: boolean;}) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const hasVideo = !!stream?.getVideoTracks()?.length
   const hasAudio = !!stream?.getAudioTracks()?.length
 
   useEffect(() => {
-    if (!stream) return
+    if (!stream) return;
     if (videoRef.current) {
-      videoRef.current.srcObject = stream
-      videoRef.current
-        .play()
-        .catch(() => setAutoplayBlocked(true))
+      videoRef.current.srcObject = stream;
     }
     if (audioRef.current && !isLocal) {
-      audioRef.current.srcObject = stream
-      audioRef.current
-        .play()
-        .catch(() => setAutoplayBlocked(true))
+      audioRef.current.srcObject = stream;
     }
-  }, [stream, isLocal, setAutoplayBlocked])
+  }, [stream, isLocal])
 
   return (
     <div className="relative bg-neutral-800 rounded-2xl overflow-hidden aspect-video group">
       {hasVideo ? (
-        <video ref={videoRef} className="w-full h-full object-cover" muted={isLocal} playsInline />
+        <video ref={videoRef} className="w-full h-full object-cover" muted={isLocal} playsInline autoPlay />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <div className="w-16 h-16 rounded-full bg-neutral-700 flex items-center justify-center text-xl">{title[0]?.toUpperCase()}</div>
         </div>
       )}
-      {!isLocal && hasAudio && <audio ref={audioRef} className="hidden" />}
+      {!isLocal && hasAudio && <audio ref={audioRef} className="hidden" autoPlay />}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 flex items-center justify-between">
         <span className="text-sm font-medium">{title}</span>
         <div className="flex items-center gap-2 opacity-80">
@@ -135,14 +128,6 @@ function IconScreenOn() {
     </svg>
   )
 }
-function IconLink() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
-      <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 1 0 7 7l1-1" />
-    </svg>
-  )
-}
 function IconLeave() {
   return (
     <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -151,9 +136,8 @@ function IconLeave() {
     </svg>
   )
 }
-function IconVideo2() { return IconVideo() } // alias
 
-/* ---------------- Main Page (wires hooks back to the original UI) ---------------- */
+/* ---------------- Main Page ---------------- */
 export default function VideoChatPage() {
   const { id } = useParams<{ id: string }>()
   const callId = id
@@ -162,9 +146,9 @@ export default function VideoChatPage() {
 
   const {
     localStream, cameraStream, screenStream,
-    mediaGranted, cameraAvailable, autoplayBlocked,
+    mediaGranted, cameraAvailable,
     micEnabled, videoEnabled, screenSharing,
-    setAutoplayBlocked, setScreenSharing, setVideoEnabled,
+    setScreenSharing, setVideoEnabled,
     getMediaStream, toggleMic, toggleVideo, cleanupMedia,
   } = useLocalMedia()
 
@@ -172,17 +156,46 @@ export default function VideoChatPage() {
     peers, remotes, wsConnected, connectWebSocket,
     startScreenShare, stopScreenShare, cleanup: cleanupCall,
   } = useCallSession({
+    currentUser: user || null,
     myId,
     callId: callId ?? '',
     localStream,
     cameraStream,
     screenStream,
     setScreenSharing,
-    setVideoEnabled,
-    setAutoplayBlocked,
+    setVideoEnabled
   })
+  
+  const participants: RemotePeer[] = useMemo(
+    () => peers.map(pid => ({ 
+      id: pid, 
+      stream: remotes[pid]?.stream,
+      userData: remotes[pid]?.userData
+    })).filter(p => !!p.stream),
+    [peers, remotes]
+  );
 
-  const log = useCallback((...a: any[]) => console.log('[VideoChat]', ...a), [])
+  console.log(participants)
+
+  const leaveCall = () => {
+    cleanupCall()
+    cleanupMedia()
+    if (typeof window !== 'undefined') {
+      if (window.history.length > 1) window.history.back()
+    }
+  }
+
+  // keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'm') toggleMic()
+      if (e.key.toLowerCase() === 'v') toggleVideo()
+      if (e.key.toLowerCase() === 's') (screenSharing ? stopScreenShare() : startScreenShare())
+      if (e.key === 'Escape') leaveCall()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [screenSharing, toggleMic, toggleVideo, startScreenShare, stopScreenShare])
 
   useEffect(() => {
     const onUnload = () => {
@@ -205,44 +218,11 @@ export default function VideoChatPage() {
         await getMediaStream()
         if (!cancelled) connectWebSocket()
       } catch (e) {
-        log('Init error:', e)
+        console.log('Init error:', e)
       }
     })()
     return () => { cancelled = true }
-  }, [myId, callId]) // ✅ only primitive deps
-
-  const participants: RemotePeer[] = useMemo(
-    () => peers.map(pid => ({ id: pid, stream: remotes[pid] })).filter(p => !!p.stream),
-    [peers, remotes]
-  )
-
-  const inviteUrl = typeof window !== 'undefined' ? window.location.href : ''
-
-  const leaveCall = () => {
-    cleanupCall()
-    cleanupMedia()
-    if (typeof window !== 'undefined') {
-      if (window.history.length > 1) window.history.back()
-    }
-  }
-
-  const enableAutoplay = () => {
-    const vids = Array.from(document.querySelectorAll('video, audio')) as HTMLMediaElement[]
-    Promise.allSettled(vids.map(el => el.play()))
-      .then(() => setAutoplayBlocked(false))
-  }
-
-  // keyboard shortcuts
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'm') toggleMic()
-      if (e.key.toLowerCase() === 'v') toggleVideo()
-      if (e.key.toLowerCase() === 's') (screenSharing ? stopScreenShare() : startScreenShare())
-      if (e.key === 'Escape') leaveCall()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [screenSharing, toggleMic, toggleVideo, startScreenShare, stopScreenShare])
+  }, [myId, callId])
 
   if (!user) return null
 
@@ -267,26 +247,18 @@ export default function VideoChatPage() {
         </div>
       </header>
 
-      {/* Notices */}
-      {autoplayBlocked && (
-        <div className="mx-4 mt-3 bg-yellow-600/20 border border-yellow-500 text-yellow-100 p-3 rounded-xl">
-          Audio/video playback was blocked by the browser. Click
-          <button onClick={enableAutoplay} className="ml-2 underline underline-offset-2">Enable</button>
-          .
-        </div>
-      )}
       {!cameraAvailable && mediaGranted && (
         <div className="mx-4 mt-3 bg-neutral-800 border border-neutral-700 text-neutral-200 p-3 rounded-xl">
-          No camera detected. You’re in audio-only mode.
+          No camera detected. You're in audio-only mode.
         </div>
       )}
 
       {/* Grid */}
       <main className="flex-1 p-4">
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          <Tile title="You" stream={localStream.current} isLocal setAutoplayBlocked={setAutoplayBlocked} />
+          <Tile title="You" stream={localStream.current} isLocal />
           {participants.map(p => (
-            <Tile key={p.id} title={`User ${p.id}`} stream={p.stream} setAutoplayBlocked={setAutoplayBlocked} />
+            <Tile key={p.id} title={p.userData?.username ?? `User ${p.id}`} stream={p.stream}/>
           ))}
         </div>
       </main>
@@ -313,15 +285,6 @@ export default function VideoChatPage() {
             title={screenSharing ? 'Stop sharing (S)' : 'Share screen (S)'}
             icon={screenSharing ? IconScreenOn : IconScreen}
           />
-          <div className="mx-1 w-px self-stretch bg-neutral-800" />
-          {/* <CallButton
-            onClick={() => {
-              if (!inviteUrl) return
-              navigator.clipboard.writeText(inviteUrl).catch(() => {})
-            }}
-            title="Copy invite link"
-            icon={IconLink}
-          /> */}
           <div className="mx-1 w-px self-stretch bg-neutral-800" />
           <CallButton
             danger
